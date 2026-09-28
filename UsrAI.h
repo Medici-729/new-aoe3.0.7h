@@ -40,7 +40,7 @@ private:
        void assignNewFarmers(tagInfo& info);
        void manageFarmers(tagInfo& info);
        int findUnassignedResource(tagInfo& info, int resourceType);
-       void buildBuilding(tagInfo& info, int buildingType, int num,vector<bool>& Assigned);
+       void buildBuilding(tagInfo& info, int buildingType, int num);
        void armymanage(tagInfo& info);
        void priestManage(tagInfo& info);
        void priestFindway(tagInfo& info, int priestSN, double priestDR, double priestUR);

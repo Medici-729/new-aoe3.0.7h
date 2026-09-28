@@ -334,53 +334,22 @@ void UsrAI::manageFarmers(tagInfo& info) {
 }
 
 //建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
-void UsrAI:: buildBuilding(tagInfo& info,int buildingType,int num,vector<bool>& Assigned){
-   if ((int)taskBuild.size() != (int)info.farmers.size()) {
-        taskBuild.assign(info.farmers.size(), -1);
-    }
-    for (auto i = 0; i < info.farmers.size(); i++) {
-        if (taskBuild[i] == -1) continue;
-        if (info.farmers[i].Blood <= 0|| info.farmers[i].NowState == HUMAN_STATE_IDLE ) {
-            taskBuild[i] = -1;
+void UsrAI:: buildBuilding(tagInfo& info,int buildingType,int num){
+   if (builderSN == -1) return;
+    bool builderIdle = false;
+    for (tagFarmer& f : info.farmers) {
+        if (f.SN == builderSN && f.Blood > 0 && 
+            f.NowState == HUMAN_STATE_IDLE) {
+            builderIdle = true;
+            break;
         }
     }
-    int currentCount = 0;
-    for (auto i = 0; i < info.farmers.size(); i++) {
-        if (taskBuild[i] != -1) currentCount++;
-    }
-    if (currentCount >= num) return;
+    if (!builderIdle) return;
     int size = 3;
     if (buildingType == BUILDING_HOME || buildingType == BUILDING_ARROWTOWER) size = 2;
     int buildDR, buildUR;
     if (!findEmptyBlock(buildDR, buildUR, size)) return;
-    if (builderSN != -1) {
-           for (auto i = 0; i < info.farmers.size(); i++) {
-               tagFarmer& f = info.farmers[i];
-               if (f.SN != builderSN) continue;
-               if (f.NowState != HUMAN_STATE_IDLE) break;
-               if (Assigned[i]) break;
-               if (taskBuild[i] != -1) break;
-               HumanBuild(f.SN, buildingType, buildDR, buildUR);
-               Assigned[i] = true;
-               taskBuild[i] = 1;
-               currentCount++;
-               break;
-           }
-       }
-    for (auto i = 0; i < info.farmers.size(); i++) {
-        tagFarmer& f = info.farmers[i];
-        if (f.FarmerSort != FARMERTYPE_FARMER) continue;
-        if (f.Blood <= 0) continue;
-        if (f.NowState != HUMAN_STATE_IDLE) continue;
-        if (Assigned[i]) continue;
-        if (taskBuild[i] != -1) continue;
-        if (f.SN==builderSN) continue;
-        HumanBuild(f.SN, buildingType, buildDR, buildUR);
-        Assigned[i] = true;
-        taskBuild[i] = 1;
-        currentCount++;
-        if (currentCount >= num) break;
-    }
+    HumanBuild(builderSN, buildingType, buildDR, buildUR);
 }
 //军队管理
 void UsrAI::armymanage(tagInfo& info){
@@ -671,13 +640,7 @@ void UsrAI::processData ()
        if(f.FarmerSort==FARMERTYPE_FARMER&&f.Blood>0) farmercount++;
     }
     manageFarmers(info);
-    
-    if(info.Human_MaxNum<16&&info.Wood>=30&&!hasUpgraded){
-       buildBuilding(info,BUILDING_HOME,buildNum,Assigned);
-    }
-    if(hasUpgraded&&info.Human_MaxNum<48&&info.Wood>=30){
-       buildBuilding(info,BUILDING_HOME,1,Assigned);
-    }
+    buildBuilding(info,BUILDING_HOME,1);
     static bool hasHuntware=false;
     if(!hasHuntware&&info.Wood>=120){
         buildHuntWarehouse(info);
@@ -729,22 +692,22 @@ void UsrAI::processData ()
    //建筑安排
    if(homeenough==true){
        if (!hasMarket&&info.Wood >= 150) {
-           buildBuilding(info, BUILDING_MARKET, 1,Assigned);
+           buildBuilding(info, BUILDING_MARKET, 1);
        }
        if (!hasArmyCamp&&info.Wood >= 125) {
-           buildBuilding(info, BUILDING_ARMYCAMP, 1,Assigned);
+           buildBuilding(info, BUILDING_ARMYCAMP, 1);
        }
        if (!hasRange &&stage >= stageDefense1 && info.Wood >= 150&&hasArmyCamp) {
-           buildBuilding(info, BUILDING_RANGE, 1,Assigned);
+           buildBuilding(info, BUILDING_RANGE, 1);
        }
        if (!hasStable&&stage >= stageDefense1 && info.Wood >= 150&&hasArmyCamp) {
-           buildBuilding(info, BUILDING_STABLE, 1,Assigned);
+           buildBuilding(info, BUILDING_STABLE, 1);
        }
        if (!hasCollage&&stage >= stageDefense2 && info.Wood >= 180&&info.civilizationStage == CIVILIZATION_BRONZEAGE) {
-           buildBuilding(info, BUILDING_COLLAGE, 1,Assigned);
+           buildBuilding(info, BUILDING_COLLAGE, 1);
        }
        if (info.Human_Num >= info.Human_MaxNum - 2 && info.Wood >= 30&&hasUpgraded) {
-           buildBuilding(info, BUILDING_HOME, 1,Assigned);
+           buildBuilding(info, BUILDING_HOME, 1);
        }
    }
    //仓库研发攻防
