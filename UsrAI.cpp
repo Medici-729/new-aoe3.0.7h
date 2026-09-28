@@ -594,11 +594,6 @@ void UsrAI::arrowTower(tagInfo& info){
 void UsrAI::processData ()
 {tagInfo info = getInfo();
     if (info.GameFrame % 5 != 0) return;
-    if ((int)Assigned.size() != (int)info.farmers.size()) {
-            Assigned.assign(info.farmers.size(), false);
-        } else {
-            fill(Assigned.begin(), Assigned.end(), false);
-        }
     for (tagBuilding& b : info.buildings) {
         if (b.Type == BUILDING_CENTER && b.Percent > 0) {
             centerDR = b.BlockDR;
