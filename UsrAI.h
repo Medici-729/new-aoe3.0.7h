@@ -39,7 +39,7 @@ private:
        void buildHuntWarehouse(tagInfo& info);
        void assignNewFarmers(tagInfo& info);
        void manageFarmers(tagInfo& info);
-       int findUnassignedResource(tagInfo& info, int resourceType);
+       int findUnassignedResource(tagInfo& info, int resourceType,double farmerDR, double farmerUR);
        void buildBuilding(tagInfo& info, int buildingType, int num);
        void armymanage(tagInfo& info);
        void priestManage(tagInfo& info);

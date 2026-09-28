@@ -635,7 +635,12 @@ void UsrAI::processData ()
        if(f.FarmerSort==FARMERTYPE_FARMER&&f.Blood>0) farmercount++;
     }
     manageFarmers(info);
-    buildBuilding(info,BUILDING_HOME,1);
+    if (info.Human_MaxNum < 16 && info.Wood >= 30 && !hasUpgraded) {
+            buildBuilding(info, BUILDING_HOME,1);
+        }
+        if (hasUpgraded && info.Human_MaxNum < 48 && info.Wood >= 30) {
+            buildBuilding(info, BUILDING_HOME, 1);
+        }
     static bool hasHuntware=false;
     if(!hasHuntware&&info.Wood>=120){
         buildHuntWarehouse(info);
