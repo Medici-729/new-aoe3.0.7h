@@ -37,8 +37,9 @@ private:
        bool findEmptyBlock(int& outDR, int& outUR, int size);
        void updateStage(tagInfo& info);
        void buildHuntWarehouse(tagInfo& info);
-       void cutTree(tagInfo& info, int num, int resourceType,vector<int>& task,vector<bool>& Assigned);
-       void hunting(tagInfo& info, int targetCount,vector<int>& task,vector<bool>& Assigned);
+       void assignNewFarmers(tagInfo& info);
+       void manageFarmers(tagInfo& info);
+       int findUnassignedResource(tagInfo& info, int resourceType);
        void buildBuilding(tagInfo& info, int buildingType, int num,vector<bool>& Assigned);
        void armymanage(tagInfo& info);
        void priestManage(tagInfo& info);

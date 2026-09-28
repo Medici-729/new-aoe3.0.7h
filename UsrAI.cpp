@@ -17,15 +17,19 @@ ins UsrIns;
 #define stageDefense2 3
 #define stageAttack 4
 static int stage=1;
-static  int builderSN=-1;
+static int builderSN=-1;
 static int terrainCache[MAP_SIZE][MAP_SIZE];
-static vector<int> taskTree;
-static vector<int> taskBerry;
-static vector<int> taskStone;
-static vector<int> taskGold;
-static vector<int> taskHunt;
+#define FARMER_IDLE 0
+#define FARMER_WALK 1
+#define FARMER_BUILD 2
+#define FARMER_WOOD 3
+#define FARMER_BERRY 4
+#define FARMER_HUNT 5
+#define FARMER_MEAT 6
+#define FARMER_FARM 7
+#define FARMER_GOLD 8
+static map<int, int> farmer_state;
 static vector<int> taskBuild;
-static vector<bool> Assigned;
 
 //距离计算函数
 double  UsrAI::calDistance(double dr1,double ur1,double dr2,double ur2){
@@ -180,132 +184,155 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
 
             HumanBuild(builderSN, BUILDING_STOCK, bestDR, bestUR);
 }
-//采集：砍树，采浆果，采金矿，挖石头
-void  UsrAI::cutTree(tagInfo& info,int num,int resourceType,vector<int>& task,vector<bool>& Assigned) {
-    if ((int)task.size() != (int)info.farmers.size()) {
-        task.assign(info.farmers.size(), -1);
+void UsrAI::assignNewFarmers(tagInfo& info) {
+    // ============================================================
+    // 1. 统计当前各状态人数
+    // ============================================================
+    int berryCount = 0, huntCount = 0, woodCount = 0, buildCount = 0;
+    for (auto& p : farmer_state) {
+        if (p.second == FARMER_BERRY) berryCount++;
+        if (p.second == FARMER_HUNT) huntCount++;
+        if (p.second == FARMER_WOOD) woodCount++;
+        if (p.second == FARMER_BUILD) buildCount++;
     }
-    for (auto i = 0; i < info.farmers.size(); i++) {
-        if (task[i] == -1) continue;
-        if (info.farmers[i].Blood <= 0) {
-            task[i] = -1;
+    
+    // ============================================================
+    // 2. 计算目标人数（用你的比例）
+    // ============================================================
+    int farmercount = 0;
+    for (tagFarmer& f : info.farmers) {
+        if (f.FarmerSort == FARMERTYPE_FARMER && f.Blood > 0) farmercount++;
+    }
+    int extra = max(farmercount - 8, 0);
+    
+    int berryTarget, huntTarget, woodTarget, buildTarget;
+    static bool hasUpgraded = false;
+    
+    if (!hasUpgraded) {
+        berryTarget = 3 + min(extra * 2 / 10, 3);
+        huntTarget = 2 + extra * 4 / 10;
+        woodTarget = 2 + extra * 2 / 10;
+        buildTarget = 1 + extra * 2 / 10;
+    } else {
+        berryTarget = 2 + extra * 4 / 10;
+        huntTarget = 2 + extra * 2 / 10;
+        woodTarget = 1 + extra * 2 / 10;
+        buildTarget = 1;
+    }
+    
+    // ============================================================
+    // 3. 分配新村民
+    // ============================================================
+    for (tagFarmer& f : info.farmers) {
+        if (f.FarmerSort != FARMERTYPE_FARMER) continue;
+        if (f.Blood <= 0) continue;
+        if (farmer_state.find(f.SN) != farmer_state.end()) continue;
+        
+        // 建设者单独处理
+        if (f.SN == builderSN) {
+            farmer_state[f.SN] = FARMER_BUILD;
+            buildCount++;
             continue;
         }
-        bool exists = false;
-        for (tagResource& r : info.resources) {
-            if (r.SN == task[i] && r.Type == resourceType && (r.Blood > 0 || r.Cnt > 0)) {
-                exists = true;
-                break;
-            }
+        
+        // 按优先级分配
+        if (berryCount < berryTarget) {
+            farmer_state[f.SN] = FARMER_BERRY;
+            berryCount++;
+        } else if (huntCount < huntTarget) {
+            farmer_state[f.SN] = FARMER_HUNT;
+            huntCount++;
+        } else if (woodCount < woodTarget) {
+            farmer_state[f.SN] = FARMER_WOOD;
+            woodCount++;
+        } else if (buildCount < buildTarget) {
+            farmer_state[f.SN] = FARMER_BUILD;
+            buildCount++;
+        } else {
+            farmer_state[f.SN] = FARMER_BERRY;
+            berryCount++;
         }
-        if (!exists) task[i] = -1;
     }
-    int count=0;
-    for (auto i = 0; i < (int)info.farmers.size(); i++) {
-           if (task[i] != -1) count++;
-       }
-       if (count >= num) return;
-       vector<int> assignedSN;
-       for (tagFarmer& f : info.farmers) {
-           if (f.WorkObjectSN != 0) {
-               assignedSN.push_back(f.WorkObjectSN);
-           }
+}
+int UsrAI::findUnassignedResource(tagInfo& info, int resourceType) {
+    // 收集已被分配的资源 SN
+    vector<int> assignedSN;
+    for (tagFarmer& f : info.farmers) {
+        if (f.WorkObjectSN != 0) {
+            assignedSN.push_back(f.WorkObjectSN);
         }
-       for (auto i = 0; i < (int)info.farmers.size(); i++) {
-           if (task[i] != -1) {
-               assignedSN.push_back(task[i]);
-           }
-       }
-    for (auto i = 0; i < info.farmers.size(); i++){
-        tagFarmer& f = info.farmers[i];
-        if (f.SN==builderSN) continue;
-        if(f.FarmerSort!=FARMERTYPE_FARMER) continue;
-        if(f.Blood<=0) continue;
-        if(f.NowState!=HUMAN_STATE_IDLE) continue;
-        if (task[i] != -1) continue;
-        if (Assigned[i]) continue;
-        int targetSN=-1;
-        double minDist=1e9;
-        for(tagResource& r:info.resources){
-            if(r.Type!=resourceType) continue;
-            if(r.Blood<=0&&r.Cnt<=0) continue;
+    }
+    
+    // 找无人采集的最近资源
+    int bestSN = -1;
+    double bestDist = 1e9;
+    for (tagResource& r : info.resources) {
+        if (r.Type != resourceType) continue;
+        if (r.Blood <= 0 && r.Cnt <= 0) continue;
+        
         bool taken = false;
         for (int sn : assignedSN) {
             if (sn == r.SN) { taken = true; break; }
         }
         if (taken) continue;
-            double dist=calDistance(f.DR,f.UR,r.DR,r.UR);
-            if(dist<minDist){
-                minDist=dist;
-                targetSN=r.SN;
-            }
-        }
-        if(targetSN!=-1){
-            HumanAction(f.SN,targetSN);
-            Assigned[i] = true;
-            count++;
-            task[i] = targetSN;
-            assignedSN.push_back(targetSN);
-        }
-        if(count>=num) break;
+        
+        double d = calDistance(0, 0, r.DR, r.UR);
+        if (d < bestDist) { bestDist = d; bestSN = r.SN; }
     }
+    return bestSN;
 }
-//打猎：羚羊
-void UsrAI:: hunting(tagInfo& info, int targetCount,vector<int>& task,vector<bool>& Assigned) {
-    if (targetCount <= 0) return;
-    if ((int)task.size() != (int)info.farmers.size()) {
-        task.assign(info.farmers.size(), -1);
-    }
-    for (size_t i = 0; i < info.farmers.size(); i++) {
-        if (task[i] == -1) continue;
-        if (info.farmers[i].Blood <= 0) {
-            task[i] = -1;
-            continue;
-        }
-        bool exists = false;
-        for (tagResource& r : info.resources) {
-            if (r.SN == task[i] && r.Type == RESOURCE_GAZELLE &&
-                (r.Blood > 0 || r.Cnt > 0)) {
-                exists = true;
-                break;
-            }
-        }
-        if (!exists) task[i] = -1;
-    }
-    int assigned = 0;
-    for (size_t i = 0; i < info.farmers.size(); i++) {
-            if (task[i] != -1) assigned++;
-        }
-        if (assigned >= targetCount) return;
-    vector<tagResource*> gazelles;
-    for (tagResource& r : info.resources) {
-        if (r.Type == RESOURCE_GAZELLE && (r.Blood > 0 || r.Cnt > 0)) {
-            gazelles.push_back(&r);
-        }
-    }
-    if (gazelles.empty()) return;
-    for (size_t i = 0; i < info.farmers.size(); i++) {
-        tagFarmer& f=info.farmers[i];
-        if (f.SN==builderSN) continue;
+void UsrAI::manageFarmers(tagInfo& info) {
+    // 1. 分配新村民
+    assignNewFarmers(info);
+    
+    // 2. 找空闲村民，分配具体目标
+    for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort != FARMERTYPE_FARMER) continue;
         if (f.Blood <= 0) continue;
         if (f.NowState != HUMAN_STATE_IDLE) continue;
-        if (task[i] != -1) continue;
-        if (Assigned[i]) continue;
-        int targetSN = -1;
-        double minDist = 1e9;
-        for (tagResource* g : gazelles) {
-            double d = calDistance(f.DR, f.UR, g->DR, g->UR);
-            if (d < minDist) { minDist = d; targetSN = g->SN; }
+        if (f.SN == builderSN) continue;   // 建设者交给 buildBuilding
+        
+        int state = farmer_state[f.SN];
+        
+        switch (state) {
+            case FARMER_BERRY: {
+                int targetSN = findUnassignedResource(info, RESOURCE_BUSH);
+                if (targetSN != -1) {
+                    HumanAction(f.SN, targetSN);
+                } else {
+                    farmer_state[f.SN] = FARMER_HUNT;   // 改打猎
+                }
+                break;
+            }
+            case FARMER_HUNT: {
+                int targetSN = findUnassignedResource(info, RESOURCE_GAZELLE);
+                if (targetSN != -1) {
+                    HumanAction(f.SN, targetSN);
+                } else {
+                    farmer_state[f.SN] = FARMER_WOOD;   // 改砍树
+                }
+                break;
+            }
+            case FARMER_WOOD: {
+                int targetSN = findUnassignedResource(info, RESOURCE_TREE);
+                if (targetSN != -1) {
+                    HumanAction(f.SN, targetSN);
+                }
+                break;
+            }
+            case FARMER_GOLD: {
+                int targetSN = findUnassignedResource(info, RESOURCE_GOLD);
+                if (targetSN != -1) {
+                    HumanAction(f.SN, targetSN);
+                }
+                break;
+            }
         }
-        if (targetSN == -1) return;
-        HumanAction(f.SN, targetSN);
-        Assigned[i] = true;
-        task[i] = targetSN;
-        assigned++;
-        if (assigned >= targetCount) break;
+        
+        return;   // 每帧只分配一个
     }
 }
+
 //建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
 void UsrAI:: buildBuilding(tagInfo& info,int buildingType,int num,vector<bool>& Assigned){
    if ((int)taskBuild.size() != (int)info.farmers.size()) {
@@ -642,39 +669,9 @@ void UsrAI::processData ()
     int farmercount=0;
     for(tagFarmer& f:info.farmers){
        if(f.FarmerSort==FARMERTYPE_FARMER&&f.Blood>0) farmercount++;
-   }
-    int extra=farmercount-8;
-    int woodcutNum;
-    int berrypickNum;
-    int huntNum;
-    int buildNum;
-    int stonedigNum;
-    int minedigNum;
-    if(!hasUpgraded){
-
-      berrypickNum=3;
-      if(max(extra,0)*2/10<=3){
-          berrypickNum+=max(extra,0)*2/10;
-      }else{
-          berrypickNum=6;
-      }
-      huntNum=2+max(extra,0)*4/10;
-      woodcutNum=2+max(extra,0)*2/10;
-      buildNum=1+max(extra,0)*2/10;
-      stonedigNum=0;
-      minedigNum=0;
     }
-    else{
-        woodcutNum=1+max(extra,0)*2/10;
-        berrypickNum=2+max(extra,0)*4/10;
-        huntNum=2+max(extra,0)*2/10;
-        buildNum=1;
-        stonedigNum=1+max(extra,0)*1/10;
-        minedigNum=1+max(extra,0)*1/10;
-    }
-    cutTree(info,woodcutNum,RESOURCE_TREE,taskTree,Assigned);
-    cutTree(info,berrypickNum,RESOURCE_BUSH,taskBerry,Assigned);
-    hunting(info, huntNum,taskHunt,Assigned);
+    manageFarmers(info);
+    
     if(info.Human_MaxNum<16&&info.Wood>=30&&!hasUpgraded){
        buildBuilding(info,BUILDING_HOME,buildNum,Assigned);
     }
@@ -686,8 +683,6 @@ void UsrAI::processData ()
         buildHuntWarehouse(info);
         hasHuntware=true;
     }
-    cutTree(info,stonedigNum,RESOURCE_STONE,taskStone,Assigned);
-    cutTree(info,minedigNum,RESOURCE_GOLD,taskGold,Assigned);
     static bool homeenough=false;
     if(info.Human_MaxNum>=16) homeenough=true;
     bool hasMarket=false;
