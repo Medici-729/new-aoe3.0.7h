@@ -154,11 +154,9 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
             gazelleUR = r.BlockUR;
             break;
         }
-
         if (gazelleDR == -1) return;
         int bestDR = -1, bestUR = -1;
             double bestDist = 1e9;
-
             for (int i = max(0, gazelleDR - 10); i <= min(MAP_SIZE - 3, gazelleDR + 10); i++) {
                 for (int j = max(0, gazelleUR - 10); j <= min(MAP_SIZE - 3, gazelleUR + 10); j++) {
                     bool ok = true;
@@ -168,7 +166,6 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
                         }
                     }
                     if (!ok) continue;
-
                     double d = calDistance(blockToDetail(i), blockToDetail(j),
                                            blockToDetail(gazelleDR), blockToDetail(gazelleUR));
                     if (d < bestDist) {
@@ -178,10 +175,8 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
                     }
                 }
             }
-
-            if (bestDR == -1) return;   // 找不到空地，不建
-            if (builderSN == -1) return;   // 没有建设者，不建
-
+            if (bestDR == -1) return;  
+            if (builderSN == -1) return;   
             HumanBuild(builderSN, BUILDING_STOCK, bestDR, bestUR);
 }
 void UsrAI::assignNewFarmers(tagInfo& info) {
@@ -621,7 +616,12 @@ void UsrAI::processData ()
     static bool hasHuntware=false;
     if(!hasHuntware&&info.Wood>=120){
         buildHuntWarehouse(info);
-        hasHuntware=true;
+        for(tagBuilding& b:info.buildings){
+            if(b.Type==BUILDING_STOCK&&b.Percent>0){
+                hasHuntware=true;
+                break;
+            }
+        }
     }
     static bool homeenough=false;
     if(info.Human_MaxNum>=16) homeenough=true;
@@ -643,6 +643,7 @@ void UsrAI::processData ()
        }
    }
    //市镇中心功能实现
+   static int upgradeFrame=0;
    static bool hasOrederUpgrade=false;
    for(tagBuilding& b:info.buildings){
        if(b.SN==centerSN&&b.Project==0){
@@ -658,6 +659,7 @@ void UsrAI::processData ()
                if (b.SN == centerSN && b.Project == 0) {
                    BuildingAction(centerSN, BUILDING_CENTER_UPGRADE);
                    hasOrederUpgrade=true;
+                   upgradeFrame = info.GameFrame; 
                    if(info.civilizationStage==CIVILIZATION_BRONZEAGE){
                        hasUpgraded = true;
                    }
@@ -691,7 +693,7 @@ void UsrAI::processData ()
    static bool hasTool=false;
    static bool hasDefense=false;
    for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_STOCK&&b.Project==0&&hasOrederUpgrade){
+       if(b.Type==BUILDING_STOCK&&b.Project==0&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
            if(!hasTool&&info.Meat>=100){
              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
              hasTool=true;
@@ -713,27 +715,27 @@ void UsrAI::processData ()
    static bool hasStoneUp = false;
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_MARKET&&b.Project==0){
-           if(!hasWheel&&info.Meat>=150&&info.Wood>=100&&hasOrederUpgrade){
+           if(!hasWheel&&info.Meat>=150&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
                BuildingAction(b.SN, BUILDING_MARKET_WHEEL_UPGRADE);
                hasWheel = true;
                continue;
            }
-           if(!hasWoodUp&&info.Meat>=120&&info.Wood>=75&&hasOrederUpgrade){
+           if(!hasWoodUp&&info.Meat>=120&&info.Wood>=75&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
               BuildingAction(b.SN, BUILDING_MARKET_WOOD_UPGRADE);
               hasWoodUp = true;
               continue;
            }
-           if(!hasFarmUp&&hasOrederUpgrade&&info.Meat>=150&&info.Wood>=50){
+           if(!hasFarmUp&&hasOrederUpgrade&&info.Meat>=150&&info.Wood>=50&& info.GameFrame - upgradeFrame >= 25){
                BuildingAction(b.SN, BUILDING_MARKET_FARM_UPGRADE);
                hasFarmUp = true;
                continue;
            }
-           if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade){
+           if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
                BuildingAction(b.SN, BUILDING_MARKET_GOLD_UPGRADE);
                hasGoldUp = true;
                continue;
            }
-           if (!hasStoneUp && info.Meat >= 100 && info.Stone >= 50 && hasOrederUpgrade) {
+           if (!hasStoneUp && info.Meat >= 100 && info.Stone >= 50 && hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25) {
                 BuildingAction(b.SN, BUILDING_MARKET_STONE_UPGRADE);
                 hasStoneUp = true;
                 continue;
@@ -798,7 +800,7 @@ void UsrAI::processData ()
    }
    //谷仓研发箭塔
    static bool hasArrowTower=false;
-   if(!hasArrowTower&&info.Meat>=50&&hasOrederUpgrade){
+   if(!hasArrowTower&&info.Meat>=50&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_GRANARY&&b.Project==0){
                BuildingAction(b.SN,BUILDING_GRANARY_ARROWTOWER);
