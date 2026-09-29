@@ -643,7 +643,7 @@ void UsrAI::processData ()
        }
    }
    //市镇中心功能实现
-    bool hasOrederUpgrade=false;
+   static bool hasOrederUpgrade=false;
    for(tagBuilding& b:info.buildings){
        if(b.SN==centerSN&&b.Project==0){
            if(info.Meat>=50&&info.Human_Num<=info.Human_MaxNum&&farmercount<=24){
