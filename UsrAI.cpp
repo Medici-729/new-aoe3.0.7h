@@ -185,9 +185,6 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
             HumanBuild(builderSN, BUILDING_STOCK, bestDR, bestUR);
 }
 void UsrAI::assignNewFarmers(tagInfo& info) {
-    // ============================================================
-    // 1. 统计当前各状态人数
-    // ============================================================
     int berryCount = 0, huntCount = 0, woodCount = 0, buildCount = 0;
     for (auto& p : farmer_state) {
         if (p.second == FARMER_BERRY) berryCount++;
@@ -195,10 +192,6 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         if (p.second == FARMER_WOOD) woodCount++;
         if (p.second == FARMER_BUILD) buildCount++;
     }
-    
-    // ============================================================
-    // 2. 计算目标人数（用你的比例）
-    // ============================================================
     int farmercount = 0;
     for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort == FARMERTYPE_FARMER && f.Blood > 0) farmercount++;
@@ -210,8 +203,8 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
     
     if (!hasUpgraded) {
         berryTarget = 3 + min(extra * 2 / 10, 3);
-        huntTarget = 2 + extra * 4 / 10;
-        woodTarget = 2 + extra * 2 / 10;
+        huntTarget = 1 + extra * 4 / 10;
+        woodTarget = 3 + extra * 2 / 10;
         buildTarget = 1 + extra * 2 / 10;
     } else {
         berryTarget = 2 + extra * 4 / 10;
@@ -220,22 +213,15 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         buildTarget = 1;
     }
     
-    // ============================================================
-    // 3. 分配新村民
-    // ============================================================
     for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort != FARMERTYPE_FARMER) continue;
         if (f.Blood <= 0) continue;
         if (farmer_state.find(f.SN) != farmer_state.end()) continue;
-        
-        // 建设者单独处理
         if (f.SN == builderSN) {
             farmer_state[f.SN] = FARMER_BUILD;
             buildCount++;
             continue;
         }
-        
-        // 按优先级分配
         if (berryCount < berryTarget) {
             farmer_state[f.SN] = FARMER_BERRY;
             berryCount++;
@@ -254,16 +240,13 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         }
     }
 }
-int UsrAI::findUnassignedResource(tagInfo& info, int resourceType) {
-    // 收集已被分配的资源 SN
+int UsrAI::findUnassignedResource(tagInfo& info, int resourceType,double farmerDR,double farmerUR) {
     vector<int> assignedSN;
     for (tagFarmer& f : info.farmers) {
         if (f.WorkObjectSN != 0) {
             assignedSN.push_back(f.WorkObjectSN);
         }
     }
-    
-    // 找无人采集的最近资源
     int bestSN = -1;
     double bestDist = 1e9;
     for (tagResource& r : info.resources) {
@@ -276,65 +259,59 @@ int UsrAI::findUnassignedResource(tagInfo& info, int resourceType) {
         }
         if (taken) continue;
         
-        double d = calDistance(0, 0, r.DR, r.UR);
+        double d = calDistance(farmerDR, farmerUR, r.DR, r.UR);
         if (d < bestDist) { bestDist = d; bestSN = r.SN; }
     }
     return bestSN;
 }
 void UsrAI::manageFarmers(tagInfo& info) {
-    // 1. 分配新村民
     assignNewFarmers(info);
-    
-    // 2. 找空闲村民，分配具体目标
     for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort != FARMERTYPE_FARMER) continue;
         if (f.Blood <= 0) continue;
         if (f.NowState != HUMAN_STATE_IDLE) continue;
-        if (f.SN == builderSN) continue;   // 建设者交给 buildBuilding
-        
+        if (f.SN == builderSN) continue;  
         int state = farmer_state[f.SN];
-        
         switch (state) {
             case FARMER_BERRY: {
-                int targetSN = findUnassignedResource(info, RESOURCE_BUSH);
+                int targetSN = findUnassignedResource(info, RESOURCE_BUSH, f.DR, f.UR);
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 } else {
-                    farmer_state[f.SN] = FARMER_HUNT;   // 改打猎
+                    farmer_state[f.SN] = FARMER_HUNT;   
                 }
                 break;
             }
             case FARMER_HUNT: {
-                int targetSN = findUnassignedResource(info, RESOURCE_GAZELLE);
+                int targetSN = findUnassignedResource(info, RESOURCE_GAZELLE, f.DR, f.UR);
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 } else {
-                    farmer_state[f.SN] = FARMER_WOOD;   // 改砍树
+                    farmer_state[f.SN] = FARMER_WOOD;   
                 }
                 break;
             }
             case FARMER_WOOD: {
-                int targetSN = findUnassignedResource(info, RESOURCE_TREE);
+                int targetSN = findUnassignedResource(info, RESOURCE_TREE, f.DR, f.UR);
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 }
                 break;
             }
             case FARMER_GOLD: {
-                int targetSN = findUnassignedResource(info, RESOURCE_GOLD);
+                int targetSN = findUnassignedResource(info, RESOURCE_GOLD, f.DR, f.UR);
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 }
                 break;
             }
         }
-        
-        return;   // 每帧只分配一个
+        return;
     }
 }
 
 //建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
-void UsrAI:: buildBuilding(tagInfo& info,int buildingType,int num){
+void UsrAI:: buildBuilding(tagInfo& info,int buildingType){
    if (builderSN == -1) return;
     bool builderIdle = false;
     for (tagFarmer& f : info.farmers) {
@@ -636,11 +613,11 @@ void UsrAI::processData ()
     }
     manageFarmers(info);
     if (info.Human_MaxNum < 16 && info.Wood >= 30 && !hasUpgraded) {
-            buildBuilding(info, BUILDING_HOME,1);
-        }
-        if (hasUpgraded && info.Human_MaxNum < 48 && info.Wood >= 30) {
-            buildBuilding(info, BUILDING_HOME, 1);
-        }
+        buildBuilding(info, BUILDING_HOME);
+    }
+    if (hasUpgraded && info.Human_MaxNum < 48 && info.Wood >= 30) {
+        buildBuilding(info, BUILDING_HOME);
+    }
     static bool hasHuntware=false;
     if(!hasHuntware&&info.Wood>=120){
         buildHuntWarehouse(info);
@@ -692,22 +669,22 @@ void UsrAI::processData ()
    //建筑安排
    if(homeenough==true){
        if (!hasMarket&&info.Wood >= 150) {
-           buildBuilding(info, BUILDING_MARKET, 1);
+           buildBuilding(info, BUILDING_MARKET);
        }
        if (!hasArmyCamp&&info.Wood >= 125) {
-           buildBuilding(info, BUILDING_ARMYCAMP, 1);
+           buildBuilding(info, BUILDING_ARMYCAMP);
        }
        if (!hasRange &&stage >= stageDefense1 && info.Wood >= 150&&hasArmyCamp) {
-           buildBuilding(info, BUILDING_RANGE, 1);
+           buildBuilding(info, BUILDING_RANGE);
        }
        if (!hasStable&&stage >= stageDefense1 && info.Wood >= 150&&hasArmyCamp) {
-           buildBuilding(info, BUILDING_STABLE, 1);
+           buildBuilding(info, BUILDING_STABLE);
        }
        if (!hasCollage&&stage >= stageDefense2 && info.Wood >= 180&&info.civilizationStage == CIVILIZATION_BRONZEAGE) {
-           buildBuilding(info, BUILDING_COLLAGE, 1);
+           buildBuilding(info, BUILDING_COLLAGE);
        }
        if (info.Human_Num >= info.Human_MaxNum - 2 && info.Wood >= 30&&hasUpgraded) {
-           buildBuilding(info, BUILDING_HOME, 1);
+           buildBuilding(info, BUILDING_HOME);
        }
    }
    //仓库研发攻防
