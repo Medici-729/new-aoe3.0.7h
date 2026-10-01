@@ -702,15 +702,14 @@ void UsrAI::processData ()
     if (hasUpgraded && info.Human_MaxNum < 48 && info.Wood >= 30) {
         buildBuilding(info, BUILDING_HOME);
     }
-    static bool hasHuntware=false;
+    int HuntwareNum=0;
+    static bool hasHuntware = false;
+    for (tagBuilding& b : info.buildings) {
+        if (b.Type == BUILDING_STOCK && b.Percent > 0) stockCount++;
+    }
+    if(HuntwareNum>1) hasHuntware=true;
     if(!hasHuntware&&info.Wood>=120){
         buildHuntWarehouse(info);
-        for(tagBuilding& b:info.buildings){
-            if(b.Type==BUILDING_STOCK&&b.Percent>0){
-                hasHuntware=true;
-                break;
-            }
-        }
     }
     static bool homeenough=false;
     if(info.Human_MaxNum>=16) homeenough=true;
