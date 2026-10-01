@@ -16,6 +16,7 @@ ins UsrIns;
 #define stageDefense1 2
 #define stageDefense2 3
 #define stageAttack 4
+static bool hasUpgraded=false;
 static int stage=1;
 static int builderSN=-1;
 static int terrainCache[MAP_SIZE][MAP_SIZE];
@@ -166,8 +167,7 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
                         }
                     }
                     if (!ok) continue;
-                    double d = calDistance(blockToDetail(i), blockToDetail(j),
-                                           blockToDetail(gazelleDR), blockToDetail(gazelleUR));
+                    double d = calDistance(blockToDetail(i), blockToDetail(j),blockToDetail(gazelleDR), blockToDetail(gazelleUR));
                     if (d < bestDist) {
                         bestDist = d;
                         bestDR = i;
@@ -180,34 +180,59 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
             HumanBuild(builderSN, BUILDING_STOCK, bestDR, bestUR);
 }
 void UsrAI::assignNewFarmers(tagInfo& info) {
-    int berryCount = 0, huntCount = 0, woodCount = 0, buildCount = 0;
+    int berryCount = 0, huntCount = 0, woodCount = 0, buildCount = 0,farmCount=0,goldCount=0,farmWorkerCount = 0;
     for (auto& p : farmer_state) {
         if (p.second == FARMER_BERRY) berryCount++;
         if (p.second == FARMER_HUNT) huntCount++;
         if (p.second == FARMER_WOOD) woodCount++;
         if (p.second == FARMER_BUILD) buildCount++;
+        if (p.second==FARMER_GOLD) goldCount++;
+        if (p.second == FARMER_FARM) farmWorkerCount++;
     }
     int farmercount = 0;
     for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort == FARMERTYPE_FARMER && f.Blood > 0) farmercount++;
     }
-    int extra = max(farmercount - 8, 0);
-    
-    int berryTarget, huntTarget, woodTarget, buildTarget;
-    static bool hasUpgraded = false;
-    
+    int berryTarget=0,huntTarget=0,woodTarget=0,buildTarget=0,goldTarget=0,farmTarget=0;
     if (!hasUpgraded) {
+        int extra = max(farmercount - 8, 0);
         berryTarget = 3 + min(extra * 2 / 10, 3);
-        huntTarget = 1 + extra * 4 / 10;
+        if(berryTarget<=6){
+            huntTarget = 1 + extra * 4 / 10;
+            woodTarget = 3 + extra * 2 / 10;
+            buildTarget = 1 + extra * 2 / 10;
+        }else{
+            huntTarget = 1+extra*4/10;
+            woodTarget = 3+extra*4/10;
+            buildTarget = 1+extra*2/10;
+        }
+    } else {
+        int extra = max(farmercount - 16, 0);
+        berryTarget = 1 + extra * 1 / 10;
+        huntTarget = 1 + extra * 2 / 10;
         woodTarget = 3 + extra * 2 / 10;
         buildTarget = 1 + extra * 2 / 10;
-    } else {
-        berryTarget = 2 + extra * 4 / 10;
-        huntTarget = 2 + extra * 2 / 10;
-        woodTarget = 1 + extra * 2 / 10;
-        buildTarget = 1;
+        goldTarget = 3 + extra * 1 / 10;
+        farmTarget = 6 + extra * 2 / 10;
     }
-    
+    static bool reassignedAfterUpgrade = false;
+    if (hasUpgraded && !reassignedAfterUpgrade) {
+        for (auto& p : farmer_state) {
+            if (goldCount >= goldTarget) break;
+            if (p.second == FARMER_BERRY) {
+                p.second = FARMER_GOLD;
+                goldCount++;
+            }
+        }
+        for (auto& p : farmer_state) {
+            if (farmWorkerCount >= farmTarget) break;
+            if (p.second == FARMER_BERRY) {
+                p.second = FARMER_FARM;
+                farmWorkerCount++;
+            }
+        }
+        reassignedAfterUpgrade = true;
+    }
     for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort != FARMERTYPE_FARMER) continue;
         if (f.Blood <= 0) continue;
@@ -229,11 +254,14 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         } else if (buildCount < buildTarget) {
             farmer_state[f.SN] = FARMER_BUILD;
             buildCount++;
-        } else {
-            farmer_state[f.SN] = FARMER_BERRY;
-            berryCount++;
+        } else if (goldCount < goldTarget) {
+            farmer_state[f.SN] = FARMER_GOLD;
+            goldCount++;
+        } else if (farmWorkerCount < farmTarget) { 
+            farmer_state[f.SN] = FARMER_FARM;
+            farmWorkerCount++;
         }
-    }
+    }2
 }
 int UsrAI::findUnassignedResource(tagInfo& info, int resourceType,double farmerDR,double farmerUR) {
     vector<int> assignedSN;
@@ -247,13 +275,11 @@ int UsrAI::findUnassignedResource(tagInfo& info, int resourceType,double farmerD
     for (tagResource& r : info.resources) {
         if (r.Type != resourceType) continue;
         if (r.Blood <= 0 && r.Cnt <= 0) continue;
-        
         bool taken = false;
         for (int sn : assignedSN) {
             if (sn == r.SN) { taken = true; break; }
         }
         if (taken) continue;
-        
         double d = calDistance(farmerDR, farmerUR, r.DR, r.UR);
         if (d < bestDist) { bestDist = d; bestSN = r.SN; }
     }
@@ -300,11 +326,29 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 }
                 break;
             }
+            case FARMER_FARM: {
+                int targetSN = -1;
+                for (tagBuilding& b : info.buildings) {
+                    if (b.Type != BUILDING_FARM) continue;
+                    if (b.Percent < 100) continue;
+                    if (b.Cnt <= 0) continue;
+                    bool taken = false;
+                    for (tagFarmer& other : info.farmers) {
+                        if (other.WorkObjectSN == b.SN) { taken = true; break; }
+                    }
+                    if (taken) continue;
+                    targetSN = b.SN;
+                    break;
+                }
+                if (targetSN != -1) {
+                    HumanAction(f.SN, targetSN);
+                }
+                break;
+            }
         }
         return;
     }
 }
-
 //建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
 void UsrAI:: buildBuilding(tagInfo& info,int buildingType){
    if (builderSN == -1) return;
@@ -325,6 +369,40 @@ void UsrAI:: buildBuilding(tagInfo& info,int buildingType){
 }
 //军队管理
 void UsrAI::armymanage(tagInfo& info){
+    int priestSN = -1;
+    double priestDR = 0, priestUR = 0;
+    for (tagArmy& a : info.armies) {
+        if (a.Sort == AT_PRIEST && a.Blood > 0) {
+            priestSN = a.SN;
+            priestDR = a.DR;
+            priestUR = a.UR;
+            break;
+        }
+    }
+    if (priestSN != -1) {
+        // 找祭司附近的敌人
+        for (tagArmy& enemy : info.enemy_armies) {
+            double d = calDistance(priestDR, priestUR, enemy.DR, enemy.UR);
+            if (d < 10 * BLOCKSIDELENGTH) {
+                int bestArmySN = -1;
+                double minArmyDist = 1e9;
+                for (tagArmy& a : info.armies) {
+                    if (a.Sort == AT_PRIEST) continue;
+                    if (a.Blood <= 0) continue;
+                    if (a.NowState != HUMAN_STATE_IDLE && 
+                        a.NowState != HUMAN_STATE_WALKING) continue;
+                    double ad = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
+                    if (ad < minArmyDist) {
+                        minArmyDist = ad;
+                        bestArmySN = a.SN;
+                    }
+                }
+                if (bestArmySN != -1) {
+                    HumanAction(bestArmySN, enemy.SN);
+                }
+            }
+        }
+    }
     for(tagArmy& a:info.armies){
         if(a.Sort==AT_PRIEST) continue;
         if(a.Blood<=0) continue;
@@ -332,12 +410,13 @@ void UsrAI::armymanage(tagInfo& info){
         int targetSN=-1;
         double minDist=1e9;
         for(tagArmy& enemy:info.enemy_armies){
+            if (enemy.Sort != AT_COMPOSITE_BOWMAN && enemy.Sort != AT_CHARIOT_ARCHER && enemy.Sort != AT_STONE_THROWER) 
+                continue;
             double d=calDistance(a.DR,a.UR,enemy.DR,enemy.UR);
-            if (d > 15 * BLOCKSIDELENGTH) continue;
-            if (enemy.Sort == AT_CHARIOT_ARCHER || enemy.Sort == AT_COMPOSITE_BOWMAN || enemy.Sort == AT_STONE_THROWER){
-                 targetSN=enemy.SN;
-                 break;
-           }
+           if (d < 25 * BLOCKSIDELENGTH && d < minDist) {
+                minDist = d;
+                targetSN = enemy.SN;
+            }
         }
         if(targetSN==-1&&!info.enemy_armies.empty()){
             for(tagArmy& enemy:info.enemy_armies){
@@ -387,6 +466,7 @@ void UsrAI::priestManage(tagInfo& info) {
     int enemySN = -1;
     double minEnemyDist = 1e9;
     for (tagArmy& e : info.enemy_armies) {
+        if (e.Sort != AT_HOPLITE) continue;
         double d = calDistance(priestDR, priestUR, e.DR, e.UR);
         if (d < 20 * BLOCKSIDELENGTH && d < minEnemyDist) {
             minEnemyDist = d;
@@ -396,7 +476,18 @@ void UsrAI::priestManage(tagInfo& info) {
             enemySN = e.SN;
         }
     }
-
+    if (!enemyDetected){
+        for (tagArmy& e : info.enemy_armies) {
+            double d = calDistance(priestDR, priestUR, e.DR, e.UR);
+            if (d < 20 * BLOCKSIDELENGTH && d < minEnemyDist) {
+                minEnemyDist = d;
+                enemyDetected = true;
+                enemyDR = e.DR;
+                enemyUR = e.UR;
+                enemySN = e.SN;
+            }
+        }
+    } 
     // 3. 有敌人 → 躲箭塔 + 转换
     if (enemyDetected) {
         // 找最近箭塔
@@ -414,7 +505,6 @@ void UsrAI::priestManage(tagInfo& info) {
                 }
             }
         }
-
         if (towerDR != -1) {
             // 祭司往箭塔跑
             if (minTowerDist > 2 * BLOCKSIDELENGTH) {
@@ -601,7 +691,6 @@ void UsrAI::processData ()
     updateStage(info);
     priestManage(info);
     arrowTower(info);
-    static bool hasUpgraded=false;
     int farmercount=0;
     for(tagFarmer& f:info.farmers){
        if(f.FarmerSort==FARMERTYPE_FARMER&&f.Blood>0) farmercount++;
@@ -647,7 +736,7 @@ void UsrAI::processData ()
    static bool hasOrederUpgrade=false;
    for(tagBuilding& b:info.buildings){
        if(b.SN==centerSN&&b.Project==0){
-           if(info.Meat>=50&&info.Human_Num<=info.Human_MaxNum&&farmercount<=24){
+           if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&farmercount<24){
                BuildingAction(centerSN,BUILDING_CENTER_CREATEFARMER);
                break;
            }
@@ -676,10 +765,10 @@ void UsrAI::processData ()
        if (!hasArmyCamp&&info.Wood >= 125) {
            buildBuilding(info, BUILDING_ARMYCAMP);
        }
-       if (!hasRange &&stage >= stageDefense1 && info.Wood >= 150&&hasArmyCamp) {
+       if (!hasRange && info.Wood >= 150&&hasArmyCamp) {
            buildBuilding(info, BUILDING_RANGE);
        }
-       if (!hasStable&&stage >= stageDefense1 && info.Wood >= 150&&hasArmyCamp) {
+       if (!hasStable&& info.Wood >= 150&&hasArmyCamp) {
            buildBuilding(info, BUILDING_STABLE);
        }
        if (!hasCollage&&stage >= stageDefense2 && info.Wood >= 180&&info.civilizationStage == CIVILIZATION_BRONZEAGE) {
@@ -689,6 +778,15 @@ void UsrAI::processData ()
            buildBuilding(info, BUILDING_HOME);
        }
    }
+   if (hasUpgraded) {
+        int farmCount = 0;
+        for (tagBuilding& b : info.buildings) {
+            if (b.Type == BUILDING_FARM && b.Percent > 0) farmCount++;
+        }
+        if (farmCount < 10 && info.Wood >= 75) {
+            buildBuilding(info, BUILDING_FARM);
+        }
+    }
    //仓库研发攻防
    static bool hasTool=false;
    static bool hasDefense=false;
@@ -698,12 +796,12 @@ void UsrAI::processData ()
              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
              hasTool=true;
              continue;
-           }
+            }
            if(info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Meat>=75){
               BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_DEFENSE_INFANTRY);
               hasDefense = true;
               continue;
-           }
+            }
        }
    }
 
@@ -712,7 +810,7 @@ void UsrAI::processData ()
    static bool hasWoodUp=false;
    static bool hasFarmUp=false;
    static bool hasGoldUp=false;
-   static bool hasStoneUp = false;
+   static bool hasStoneUp=false;
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_MARKET&&b.Project==0){
            if(!hasWheel&&info.Meat>=150&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
@@ -740,44 +838,66 @@ void UsrAI::processData ()
                 hasStoneUp = true;
                 continue;
            }
-       }
+        }
    }
+   //靶场研发复合弓
+   static bool hasCompositeBow=false; 
+   for(tagBuilding& b:info.buildings){
+        if (b.Type == BUILDING_RANGE && b.Project == 0){
+            if (hasUpgraded && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
+                BuildingAction(b.SN, BUILDING_RANGE_UPGRADE_COMPOSITE_BOW);
+                hasCompositeBow = true;
+                break;
+            }
+        }
 
+   }
+   int broadswordCount = 0, bowmanCount = 0, cavalryCount = 0, hopliteCount = 0;
+    for (tagArmy& a : info.armies) {
+        if (a.Sort == AT_BROADSWORDSMAN) broadswordCount++;
+        if (a.Sort == AT_COMPOSITE_BOWMAN) bowmanCount++;
+        if (a.Sort == AT_CAVALRY) cavalryCount++;
+        if (a.Sort == AT_HOPLITE) hopliteCount++;
+    }
    //兵营训练士兵
    static bool hasUpgradedClubman = false;
    if(hasUpgraded){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_ARMYCAMP&&b.Project==0){
-               if(info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Meat>=35&&info.Gold>=15&&info.Human_Num<info.Human_MaxNum){
+               if(broadswordCount<5&&info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Meat>=35&&info.Gold>=15&&info.Human_Num<info.Human_MaxNum){
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_BROADSWORD);
                   continue;
-               }
+                }
                if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum){
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
                   continue;
-               }
+                }
                if(!hasUpgradedClubman&&info.civilizationStage>=CIVILIZATION_TOOLAGE&&info.Meat>=100){
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_UPGRADE_CLUBMAN);
                   hasUpgradedClubman=true;
                   continue;
-               }
+                }
            }
        }
    }
    //靶场训练弓箭手
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_RANGE&&b.Project==0){
-           if(hasUpgraded&&info.Human_Num<info.Human_MaxNum&&info.Wood>=20&&info.Meat>=40){
-               BuildingAction(b.SN, BUILDING_RANGE_CREATE_BOWMAN);
-               continue;
-           }
+           if(hasUpgraded&&info.Human_Num<info.Human_MaxNum){
+                if (bowmanCount < 10 &&hasCompositeBow && info.Meat >= 40 && info.Gold >= 20) {
+                    BuildingAction(b.SN, BUILDING_RANGE_CREATE_COMPOSITE_BOWMAN);
+                } else if (info.Wood >= 20 && info.Meat >= 40) {
+                    BuildingAction(b.SN, BUILDING_RANGE_CREATE_BOWMAN);
+                  }
+            continue;
+            }
        }
    }
    //马厩训练骑兵
    if(stage>=stageDefense2){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_STABLE&&b.Project==0&&hasUpgraded){
-               if(info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Human_Num<info.Human_MaxNum&&info.Meat>=70&&info.Gold>=80){
+               if(cavalryCount < 5 && info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Human_Num<info.Human_MaxNum&&info.Meat>=70&&info.Gold>=80){
                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_CAVALRY);
                    continue;
                }
@@ -791,7 +911,7 @@ void UsrAI::processData ()
    if(stage>=stageDefense2){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_COLLAGE&&b.Project==0){
-               if(info.Human_Num<info.Human_MaxNum&&info.Meat>=60&&info.Gold>=40){
+               if(hopliteCount < 4 &&info.Human_Num<info.Human_MaxNum&&info.Meat>=60&&info.Gold>=40){
                    BuildingAction(b.SN, BUILDING_COLLAGE_CREATE_HOPLITE);
                    continue;
                }
