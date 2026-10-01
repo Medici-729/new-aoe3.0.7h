@@ -261,7 +261,7 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
             farmer_state[f.SN] = FARMER_FARM;
             farmWorkerCount++;
         }
-    }2
+    }
 }
 int UsrAI::findUnassignedResource(tagInfo& info, int resourceType,double farmerDR,double farmerUR) {
     vector<int> assignedSN;
@@ -804,7 +804,17 @@ void UsrAI::processData ()
             }
        }
    }
-
+    //靶场研发复合弓
+   static bool hasCompositeBow=false; 
+   for(tagBuilding& b:info.buildings){
+        if (b.Type == BUILDING_RANGE && b.Project == 0){
+            if (hasUpgraded && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
+                BuildingAction(b.SN, BUILDING_RANGE_UPGRADE_COMPOSITE_BOW);
+                hasCompositeBow = true;
+                break;
+            }
+        }
+   }
    //市场研发科技
    static bool hasWheel=false;
    static bool hasWoodUp=false;
@@ -823,35 +833,14 @@ void UsrAI::processData ()
               hasWoodUp = true;
               continue;
            }
-           if(!hasFarmUp&&hasOrederUpgrade&&info.Meat>=150&&info.Wood>=50&& info.GameFrame - upgradeFrame >= 25){
-               BuildingAction(b.SN, BUILDING_MARKET_FARM_UPGRADE);
-               hasFarmUp = true;
-               continue;
-           }
            if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
                BuildingAction(b.SN, BUILDING_MARKET_GOLD_UPGRADE);
                hasGoldUp = true;
                continue;
            }
-           if (!hasStoneUp && info.Meat >= 100 && info.Stone >= 50 && hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25) {
-                BuildingAction(b.SN, BUILDING_MARKET_STONE_UPGRADE);
-                hasStoneUp = true;
-                continue;
-           }
         }
    }
-   //靶场研发复合弓
-   static bool hasCompositeBow=false; 
-   for(tagBuilding& b:info.buildings){
-        if (b.Type == BUILDING_RANGE && b.Project == 0){
-            if (hasUpgraded && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
-                BuildingAction(b.SN, BUILDING_RANGE_UPGRADE_COMPOSITE_BOW);
-                hasCompositeBow = true;
-                break;
-            }
-        }
-
-   }
+ 
    int broadswordCount = 0, bowmanCount = 0, cavalryCount = 0, hopliteCount = 0;
     for (tagArmy& a : info.armies) {
         if (a.Sort == AT_BROADSWORDSMAN) broadswordCount++;
