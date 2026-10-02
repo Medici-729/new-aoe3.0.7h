@@ -200,15 +200,17 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
     int berryTarget=0,huntTarget=0,woodTarget=0,buildTarget=0,goldTarget=0,farmTarget=0;
     if (stage<stageDefense2) {
         int extra = max(farmercount - 8, 0);
-        berryTarget = 3 + min(extra * 2 / 10, 3);
+        berryTarget = 2 + min(extra * 2 / 10, 3);
         if(berryTarget<=6){
             huntTarget = 1 + extra * 4 / 10;
             woodTarget = 3 + extra * 2 / 10;
             buildTarget = 1 + extra * 2 / 10;
+            goldTarget = 1;
         }else{
             huntTarget = 1+extra*4/10;
             woodTarget = 3+extra*4/10;
             buildTarget = 1+extra*2/10;
+            goldTarget = 1;
         }
     } else {
         int extra = max(farmercount - 16, 0);
@@ -832,31 +834,6 @@ void UsrAI::processData ()
             }
         }
    }
-   //市场研发科技
-   static bool hasWheel=false;
-   static bool hasWoodUp=false;
-   static bool hasFarmUp=false;
-   static bool hasGoldUp=false;
-   static bool hasStoneUp=false;
-   for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_MARKET&&b.Project==0){
-           if(!hasWheel&&info.Meat>=150&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
-               BuildingAction(b.SN, BUILDING_MARKET_WHEEL_UPGRADE);
-               hasWheel = true;
-               continue;
-           }
-           if(!hasWoodUp&&info.Meat>=120&&info.Wood>=75&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
-              BuildingAction(b.SN, BUILDING_MARKET_WOOD_UPGRADE);
-              hasWoodUp = true;
-              continue;
-           }
-           if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
-               BuildingAction(b.SN, BUILDING_MARKET_GOLD_UPGRADE);
-               hasGoldUp = true;
-               continue;
-           }
-        }
-   }
  
    int broadswordCount = 0, bowmanCount = 0, cavalryCount = 0, hopliteCount = 0;
     for (tagArmy& a : info.armies) {
@@ -865,6 +842,7 @@ void UsrAI::processData ()
         if (a.Sort == AT_CAVALRY) cavalryCount++;
         if (a.Sort == AT_HOPLITE) hopliteCount++;
     }
+
    //兵营训练士兵
    static bool hasUpgradedClubman = false;
    if(hasUpgraded){
@@ -899,8 +877,8 @@ void UsrAI::processData ()
             }
        }
    }
-   //马厩训练骑兵
-   if(stage>=stageDefense2){
+    //马厩训练骑兵
+   if(stage>=stageDefense1){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_STABLE&&b.Project==0&&hasUpgraded){
                if(cavalryCount < 5 && info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Human_Num<info.Human_MaxNum&&info.Meat>=70&&info.Gold>=80){
@@ -914,7 +892,7 @@ void UsrAI::processData ()
            }
        }
    }
-   if(stage>=stageDefense2){
+   if(stage>=stageDefense1){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_COLLAGE&&b.Project==0){
                if(hopliteCount < 4 &&info.Human_Num<info.Human_MaxNum&&info.Meat>=60&&info.Gold>=40){
@@ -923,6 +901,29 @@ void UsrAI::processData ()
                }
            }
        }
+   }
+   //市场研发科技
+   static bool hasWheel=false;
+   static bool hasWoodUp=false;
+   static bool hasGoldUp=false;
+   for(tagBuilding& b:info.buildings){
+       if(b.Type==BUILDING_MARKET&&b.Project==0){
+           if(!hasWheel&&info.Meat>=150&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+               BuildingAction(b.SN, BUILDING_MARKET_WHEEL_UPGRADE);
+               hasWheel = true;
+               continue;
+           }
+           if(!hasWoodUp&&info.Meat>=120&&info.Wood>=75&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+              BuildingAction(b.SN, BUILDING_MARKET_WOOD_UPGRADE);
+              hasWoodUp = true;
+              continue;
+           }
+           if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+               BuildingAction(b.SN, BUILDING_MARKET_GOLD_UPGRADE);
+               hasGoldUp = true;
+               continue;
+           }
+        }
    }
    //谷仓研发箭塔
    static bool hasArrowTower=false;
