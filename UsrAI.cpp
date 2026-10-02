@@ -563,6 +563,16 @@ void UsrAI::priestManage(tagInfo& info) {
 }
 //祭司探路
 void UsrAI::priestFindway(tagInfo& info, int priestSN, double priestDR, double priestUR) {
+        for (tagArmy& e : info.enemy_armies) {
+        double d = calDistance(priestDR, priestUR, e.DR, e.UR);
+        if (d < 20 * BLOCKSIDELENGTH) {
+            double fleeDR = priestDR + (priestDR - e.DR) * 2;
+            double fleeUR = priestUR + (priestUR - e.UR) * 2;
+            fleeDR = max(0.0, min(fleeDR, (double)MAP_SIZE * BLOCKSIDELENGTH));
+            fleeUR = max(0.0, min(fleeUR, (double)MAP_SIZE * BLOCKSIDELENGTH));
+            HumanMove(priestSN, fleeDR, fleeUR);
+            return;
+        }
         static int step = 0;
         static int lastFrame = 0;
         static double lastFrameDR = -1, lastFrameUR = -1;
