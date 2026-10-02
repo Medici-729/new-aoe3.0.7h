@@ -200,9 +200,9 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
     int berryTarget=0,huntTarget=0,woodTarget=0,buildTarget=0,goldTarget=0,farmTarget=0;
     if (stage<stageDefense2) {
         int extra = max(farmercount - 8, 0);
-        berryTarget = 2 + min(extra * 2 / 10, 3);
+        berryTarget = 2 + min(extra * 5 / 10, 4);
         if(berryTarget<=6){
-            huntTarget = 1 + extra * 4 / 10;
+            huntTarget = 1 + extra * 2 / 10;
             woodTarget = 3 + extra * 2 / 10;
             buildTarget = 1 + extra * 2 / 10;
             goldTarget = 1;
