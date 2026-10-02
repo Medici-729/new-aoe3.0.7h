@@ -705,7 +705,7 @@ void UsrAI::processData ()
     int HuntwareNum=0;
     static bool hasHuntware = false;
     for (tagBuilding& b : info.buildings) {
-        if (b.Type == BUILDING_STOCK && b.Percent > 0) stockCount++;
+        if (b.Type == BUILDING_STOCK && b.Percent > 0) HuntwareNum++;
     }
     if(HuntwareNum>1) hasHuntware=true;
     if(!hasHuntware&&info.Wood>=120){
@@ -757,26 +757,6 @@ void UsrAI::processData ()
        }
    }
    //建筑安排
-   if(homeenough==true){
-       if (!hasMarket&&info.Wood >= 150) {
-           buildBuilding(info, BUILDING_MARKET);
-       }
-       if (!hasArmyCamp&&info.Wood >= 125) {
-           buildBuilding(info, BUILDING_ARMYCAMP);
-       }
-       if (!hasRange && info.Wood >= 150&&hasArmyCamp) {
-           buildBuilding(info, BUILDING_RANGE);
-       }
-       if (!hasStable&& info.Wood >= 150&&hasArmyCamp) {
-           buildBuilding(info, BUILDING_STABLE);
-       }
-       if (!hasCollage&&stage >= stageDefense2 && info.Wood >= 180&&info.civilizationStage == CIVILIZATION_BRONZEAGE) {
-           buildBuilding(info, BUILDING_COLLAGE);
-       }
-       if (info.Human_Num >= info.Human_MaxNum - 2 && info.Wood >= 30&&hasUpgraded) {
-           buildBuilding(info, BUILDING_HOME);
-       }
-   }
    if (hasUpgraded) {
         int farmCount = 0;
         for (tagBuilding& b : info.buildings) {
@@ -786,6 +766,26 @@ void UsrAI::processData ()
             buildBuilding(info, BUILDING_FARM);
         }
     }
+   if(homeenough==true){
+       if (!hasMarket&&info.Wood >= 150) {
+           buildBuilding(info, BUILDING_MARKET);
+       }
+       if (hasMarket&&!hasArmyCamp&&info.Wood >= 125) {
+           buildBuilding(info, BUILDING_ARMYCAMP);
+       }
+       if (!hasRange && info.Wood >= 150&&hasArmyCamp) {
+           buildBuilding(info, BUILDING_RANGE);
+       }
+       if (!hasStable&& info.Wood >= 150&&hasArmyCamp) {
+           buildBuilding(info, BUILDING_STABLE);
+       }
+       if (info.Human_Num <48 && info.Wood >= 30&&hasUpgraded) {
+           buildBuilding(info, BUILDING_HOME);
+       }
+       if (!hasCollage&&stage >= stageDefense2 && info.Wood >= 180&&info.civilizationStage == CIVILIZATION_BRONZEAGE) {
+           buildBuilding(info, BUILDING_COLLAGE);
+       }
+   }
    //仓库研发攻防
    static bool hasTool=false;
    static bool hasDefense=false;
