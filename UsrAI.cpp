@@ -97,25 +97,31 @@ void UsrAI:: updateTerrainCache(tagInfo& info) {
 static int centerDR = -1;
 static int centerUR = -1;
 bool UsrAI::findEmptyBlock(int& outDR, int& outUR, int size) {
-    static int offset = 0;
+       static int offset = 0;
        offset = (offset + 7) % 40;
-       int startI = centerDR + offset - 20;
-       int startJ = centerUR + offset - 20;
-       for (int i = max(0, startI); i <= min(MAP_SIZE - size, centerDR + 30); i++) {
-           for (int j = max(0, startJ); j <= min(MAP_SIZE - size, centerUR + 30); j++) {
+       int ranges[] = {10, 20, 30, 50};
+    for (int r = 0; r < 4; r++) {
+        int range = ranges[r];
+        int startI = centerDR + offset - range;
+        int startJ = centerUR + offset - range;
+        int startI = centerDR + offset - 20;
+        int startJ = centerUR + offset - 20;
+        for (int i = max(0, startI); i <= min(MAP_SIZE - size, centerDR + 30); i++) {
+            for (int j = max(0, startJ); j <= min(MAP_SIZE - size, centerUR + 30); j++) {
                bool ok = true;
-               for (int di = 0; di < size && ok; di++) {
-                   for (int dj = 0; dj < size && ok; dj++) {
+                for (int di = 0; di < size && ok; di++) {
+                    for (int dj = 0; dj < size && ok; dj++) {
                        if (terrainCache[i+di][j+dj] != 0) ok = false;
-                   }
-               }
-               if (ok) {
+                    }
+                }
+                if (ok) {
                    outDR = i;
                    outUR = j;
                    return true;
-               }
-           }
-       }
+                }
+            }
+        }
+    }
        for (int i = 0; i <= MAP_SIZE - size; i++) {
            for (int j = 0; j <= MAP_SIZE - size; j++) {
                bool ok = true;
@@ -572,6 +578,7 @@ void UsrAI::priestFindway(tagInfo& info, int priestSN, double priestDR, double p
             fleeUR = max(0.0, min(fleeUR, (double)MAP_SIZE * BLOCKSIDELENGTH));
             HumanMove(priestSN, fleeDR, fleeUR);
             return;
+        }
         }
         static int step = 0;
         static int lastFrame = 0;
