@@ -852,27 +852,28 @@ void UsrAI::processData ()
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_BROADSWORD);
                   continue;
                 }
-               if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum){
-                  BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
-                  continue;
-                }
-               if(!hasUpgradedClubman&&info.Meat>=100){
-                  BuildingAction(b.SN, BUILDING_ARMYCAMP_UPGRADE_CLUBMAN);
-                  hasUpgradedClubman=true;
-                  continue;
-                }
+            //    if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum){
+            //       BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
+            //       continue;
+            //     }
+            //    if(!hasUpgradedClubman&&info.Meat>=100){
+            //       BuildingAction(b.SN, BUILDING_ARMYCAMP_UPGRADE_CLUBMAN);
+            //       hasUpgradedClubman=true;
+            //       continue;
+            //     }
            }
        }
    }
    //靶场训练弓箭手
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_RANGE&&b.Project==0){
-           if(hasUpgraded&&info.Human_Num<info.Human_MaxNum){
+           if(hasUpgraded&&info.Human_Num<info.Human_MaxNum&&hasCompositeBow){
                 if (bowmanCount < 10 &&hasCompositeBow && info.Meat >= 40 && info.Gold >= 20) {
                     BuildingAction(b.SN, BUILDING_RANGE_CREATE_COMPOSITE_BOWMAN);
-                } else if (info.Wood >= 20 && info.Meat >= 40) {
-                    BuildingAction(b.SN, BUILDING_RANGE_CREATE_BOWMAN);
-                  }
+                } 
+                // else if (info.Wood >= 20 && info.Meat >= 40) {
+                //     BuildingAction(b.SN, BUILDING_RANGE_CREATE_BOWMAN);
+                //   }
             continue;
             }
        }
@@ -885,10 +886,10 @@ void UsrAI::processData ()
                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_CAVALRY);
                    continue;
                }
-               if(info.Human_Num<=info.Human_MaxNum&&info.Meat>=60){
-                   BuildingAction(b.SN, BUILDING_STABLE_CREATE_SCOUT);
-                   continue;
-               }
+            //    if(info.Human_Num<=info.Human_MaxNum&&info.Meat>=60){
+            //        BuildingAction(b.SN, BUILDING_STABLE_CREATE_SCOUT);
+            //        continue;
+            //    }
            }
        }
    }
@@ -918,11 +919,11 @@ void UsrAI::processData ()
               hasWoodUp = true;
               continue;
            }
-           if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
-               BuildingAction(b.SN, BUILDING_MARKET_GOLD_UPGRADE);
-               hasGoldUp = true;
-               continue;
-           }
+        //    if(!hasGoldUp&&info.Meat>=120&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+        //        BuildingAction(b.SN, BUILDING_MARKET_GOLD_UPGRADE);
+        //        hasGoldUp = true;
+        //        continue;
+        //    }
         }
    }
    //谷仓研发箭塔
