@@ -810,13 +810,13 @@ void UsrAI::processData ()
    static bool hasTool=false;
    static bool hasDefense=false;
    for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_STOCK&&b.Project==0&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+       if(b.Type==BUILDING_STOCK&&b.Project==0&&stage>stageDefense2&& info.GameFrame - upgradeFrame >= 25){
            if(!hasTool&&info.Meat>=100){
              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
              hasTool=true;
              continue;
             }
-           if(info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Meat>=75){
+           if(stage>=stageDefense2&&info.Meat>=75){
               BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_DEFENSE_INFANTRY);
               hasDefense = true;
               continue;
