@@ -104,8 +104,6 @@ bool UsrAI::findEmptyBlock(int& outDR, int& outUR, int size) {
         int range = ranges[r];
         int startI = centerDR + offset - range;
         int startJ = centerUR + offset - range;
-        int startI = centerDR + offset - 20;
-        int startJ = centerUR + offset - 20;
         for (int i = max(0, startI); i <= min(MAP_SIZE - size, centerDR + 30); i++) {
             for (int j = max(0, startJ); j <= min(MAP_SIZE - size, centerUR + 30); j++) {
                bool ok = true;
@@ -200,7 +198,7 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         if (f.FarmerSort == FARMERTYPE_FARMER && f.Blood > 0) farmercount++;
     }
     int berryTarget=0,huntTarget=0,woodTarget=0,buildTarget=0,goldTarget=0,farmTarget=0;
-    if (!hasUpgraded) {
+    if (stage<stageDefense2) {
         int extra = max(farmercount - 8, 0);
         berryTarget = 3 + min(extra * 2 / 10, 3);
         if(berryTarget<=6){
