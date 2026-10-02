@@ -474,7 +474,7 @@ void UsrAI::priestManage(tagInfo& info) {
     for (tagArmy& e : info.enemy_armies) {
         if (e.Sort != AT_HOPLITE) continue;
         double d = calDistance(priestDR, priestUR, e.DR, e.UR);
-        if (d < 20 * BLOCKSIDELENGTH && d < minEnemyDist) {
+        if (d < 30 * BLOCKSIDELENGTH && d < minEnemyDist) {
             minEnemyDist = d;
             enemyDetected = true;
             enemyDR = e.DR;
