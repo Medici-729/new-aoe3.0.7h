@@ -654,8 +654,11 @@ void UsrAI::arrowTower(tagInfo& info){
 
 /* ============================== 主入口 ============================== */
 void UsrAI::processData ()
-{tagInfo info = getInfo();
+{   tagInfo info = getInfo();
     if (info.GameFrame % 5 != 0) return;
+    if (info.civilizationStage == CIVILIZATION_BRONZEAGE) {
+        hasUpgraded = true;
+    }
     for (tagBuilding& b : info.buildings) {
         if (b.Type == BUILDING_CENTER && b.Percent > 0) {
             centerDR = b.BlockDR;
@@ -741,7 +744,7 @@ void UsrAI::processData ()
            }
        }
    }
-   if (info.civilizationStage == CIVILIZATION_TOOLAGE && info.Meat >= 800&&!hasUpgraded) {
+   if (info.Meat >= 800&&!hasUpgraded) {
        if (hasMarket && (hasRange || hasStable)) {
            for (tagBuilding& b : info.buildings) {
                if (b.SN == centerSN && b.Project == 0) {
@@ -860,7 +863,7 @@ void UsrAI::processData ()
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
                   continue;
                 }
-               if(!hasUpgradedClubman&&info.civilizationStage>=CIVILIZATION_TOOLAGE&&info.Meat>=100){
+               if(!hasUpgradedClubman&&info.Meat>=100){
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_UPGRADE_CLUBMAN);
                   hasUpgradedClubman=true;
                   continue;
