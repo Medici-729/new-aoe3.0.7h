@@ -213,14 +213,14 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
             goldTarget = 2+extra*2/10;
         }
     } 
-    if(hasUpgraded&&stage<stageDefense2){
+    if(hasUpgraded&&!secondWaveEnded){
         berryTarget = 4;
         huntTarget = 4;
         woodTarget = 4;
         buildTarget = 1;
         goldTarget = 3;
     }
-    if(stage>=stageDefense2) {
+    if(secondWaveEnded) {
         int extra = max(farmercount - 16, 0);
         berryTarget = 3 + extra * 1 / 10;
         huntTarget = 3 + extra * 2 / 10;
@@ -550,7 +550,7 @@ void UsrAI::priestManage(tagInfo& info) {
                     }
                     if (priestIdle) {
                         HumanAction(priestSN, enemySN);
-                    `} 
+                    }
                 }
             }
         }
@@ -689,6 +689,16 @@ void UsrAI::processData ()
     if (info.GameFrame % 5 != 0) return;
     if (info.civilizationStage == CIVILIZATION_BRONZEAGE) {
         hasUpgraded = true;
+    }
+    static int lastEnemyFrame = 0;
+    static bool secondWaveEnded = false;
+    if (!info.enemy_armies.empty()) {
+        lastEnemyFrame = info.GameFrame;
+    }
+    if (info.GameFrame >= 13500 && info.GameFrame < 21000) {
+        if (info.GameFrame - lastEnemyFrame > 300) {
+            secondWaveEnded = true;
+        }
     }
     for (tagBuilding& b : info.buildings) {
         if (b.Type == BUILDING_CENTER && b.Percent > 0) {
@@ -896,12 +906,12 @@ void UsrAI::processData ()
    static bool hasDefense=false;
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_STOCK&&b.Project==0&& info.GameFrame - upgradeFrame >= 25){
-           if(!hasTool&&info.Meat>=100&&stage>=stageDefense2){
+           if(!hasTool&&info.Meat>=100&&secondWaveEnded){
              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
              hasTool=true;
              continue;
             }
-           if(stage>=stageDefense2&&info.Meat>=75){
+           if(secondWaveEnded&&info.Meat>=75){
               BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_DEFENSE_INFANTRY);
               hasDefense = true;
               continue;
@@ -924,7 +934,7 @@ void UsrAI::processData ()
    static bool hasWoodUp=false;
    static bool hasGoldUp=false;
    for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_MARKET&&b.Project==0&&stage>=stageDefense2){
+       if(b.Type==BUILDING_MARKET&&b.Project==0&&secondWaveEnded){
            if(!hasWheel&&info.Meat>=150&&info.Wood>=100){
                BuildingAction(b.SN, BUILDING_MARKET_WHEEL_UPGRADE);
                hasWheel = true;
