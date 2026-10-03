@@ -198,7 +198,7 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         if (f.FarmerSort == FARMERTYPE_FARMER && f.Blood > 0) farmercount++;
     }
     int berryTarget=0,huntTarget=0,woodTarget=0,buildTarget=0,goldTarget=0,farmTarget=0;
-    if (stage<stageDefense2) {
+    if (!hasUpgraded) {
         int extra = max(farmercount - 8, 0);
         berryTarget = 2 + min(extra * 5 / 10, 4);
         if(berryTarget<=6){
@@ -214,8 +214,8 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         }
     } else {
         int extra = max(farmercount - 16, 0);
-        berryTarget = 2 + extra * 1 / 10;
-        huntTarget = 2 + extra * 2 / 10;
+        berryTarget = 3 + extra * 1 / 10;
+        huntTarget = 3 + extra * 2 / 10;
         woodTarget = 3 + extra * 2 / 10;
         buildTarget = 2 + extra * 2 / 10;
         goldTarget = 3 + extra * 1 / 10;
@@ -814,7 +814,7 @@ void UsrAI::processData ()
    static bool hasTool=false;
    static bool hasDefense=false;
    for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_STOCK&&b.Project==0&&stage>stageDefense2&& info.GameFrame - upgradeFrame >= 25){
+       if(b.Type==BUILDING_STOCK&&b.Project==0&&stage>=stageDefense2&& info.GameFrame - upgradeFrame >= 25){
            if(!hasTool&&info.Meat>=100){
              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
              hasTool=true;
@@ -850,13 +850,14 @@ void UsrAI::processData ()
 
    //兵营训练士兵
    //static bool hasUpgradedClubman = false;
-   if(hasUpgraded){
+   if(hasUpgraded&&hasCompositeBow){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_ARMYCAMP&&b.Project==0){
                if(broadswordCount<5&&info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Meat>=35&&info.Gold>=15&&info.Human_Num<info.Human_MaxNum){
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_BROADSWORD);
+                  continue;
                 }
-                if(clubmanCount<3&&info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&){
+                if(clubmanCount<3&&info.Meat>=50&&info.Human_Num<info.Human_MaxNum){
                    BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
                    continue;
                  }
@@ -885,7 +886,7 @@ void UsrAI::processData ()
     //马厩训练骑兵
    if(stage>=stageDefense1){
        for(tagBuilding& b:info.buildings){
-           if(b.Type==BUILDING_STABLE&&b.Project==0&&hasUpgraded){
+           if(b.Type==BUILDING_STABLE&&b.Project==0&&hasUpgraded&&hasCompositeBow){
                if(cavalryCount < 5 && info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Human_Num<info.Human_MaxNum&&info.Meat>=70&&info.Gold>=80){
                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_CAVALRY);
                    continue;
@@ -897,6 +898,7 @@ void UsrAI::processData ()
            }
        }
    }
+   //学院训练重装步兵
    if(stage>=stageDefense1){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_COLLAGE&&b.Project==0){
@@ -912,13 +914,13 @@ void UsrAI::processData ()
    static bool hasWoodUp=false;
    static bool hasGoldUp=false;
    for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_MARKET&&b.Project==0){
-           if(!hasWheel&&info.Meat>=150&&info.Wood>=100&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+       if(b.Type==BUILDING_MARKET&&b.Project==0&&stage>=stageDefense2){
+           if(!hasWheel&&info.Meat>=150&&info.Wood>=100){
                BuildingAction(b.SN, BUILDING_MARKET_WHEEL_UPGRADE);
                hasWheel = true;
                continue;
            }
-           if(!hasWoodUp&&info.Meat>=120&&info.Wood>=75&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+           if(!hasWoodUp&&info.Meat>=120&&info.Wood>=75){
               BuildingAction(b.SN, BUILDING_MARKET_WOOD_UPGRADE);
               hasWoodUp = true;
               continue;
@@ -931,16 +933,16 @@ void UsrAI::processData ()
         }
    }
    //谷仓研发箭塔
-   static bool hasArrowTower=false;
-   if(!hasArrowTower&&info.Meat>=50&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
-       for(tagBuilding& b:info.buildings){
-           if(b.Type==BUILDING_GRANARY&&b.Project==0){
-               BuildingAction(b.SN,BUILDING_GRANARY_ARROWTOWER);
-               hasArrowTower=true;
-               break;
-           }
-       }
-   }
+//    static bool hasArrowTower=false;
+//    if(!hasArrowTower&&info.Meat>=50&&hasOrederUpgrade&& info.GameFrame - upgradeFrame >= 25){
+//        for(tagBuilding& b:info.buildings){
+//            if(b.Type==BUILDING_GRANARY&&b.Project==0){
+//                BuildingAction(b.SN,BUILDING_GRANARY_ARROWTOWER);
+//                hasArrowTower=true;
+//                break;
+//            }
+//        }
+//    }
    armymanage(info);
 
 }
