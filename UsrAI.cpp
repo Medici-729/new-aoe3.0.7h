@@ -17,6 +17,7 @@ ins UsrIns;
 #define stageDefense2 3
 #define stageAttack 4
 static bool hasUpgraded=false;
+static bool secondWaveEnded = false;
 static int stage=1;
 static int builderSN=-1;
 static int terrainCache[MAP_SIZE][MAP_SIZE];
@@ -427,38 +428,58 @@ void UsrAI::armymanage(tagInfo& info){
         if(a.NowState!=HUMAN_STATE_IDLE&&a.NowState!=HUMAN_STATE_WALKING) continue;
         int targetSN=-1;
         double minDist=1e9;
+        if (priestSN != -1) {
+        for(tagArmy& enemy:info.enemy_armies){
+            double dToPriest = calDistance(priestDR, priestUR, enemy.DR, enemy.UR);
+            if (dToPriest < 10 * BLOCKSIDELENGTH) {
+                double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
+                if (d < minDist) {
+                    minDist = d;
+                    targetSN = enemy.SN;
+                }
+            }
+        }
+    }
+    
+    // 优先级2：远程单位
+    if (targetSN == -1) {
         for(tagArmy& enemy:info.enemy_armies){
             if (enemy.Sort != AT_COMPOSITE_BOWMAN && enemy.Sort != AT_CHARIOT_ARCHER && enemy.Sort != AT_STONE_THROWER) 
                 continue;
             double d=calDistance(a.DR,a.UR,enemy.DR,enemy.UR);
-           if (d < 25 * BLOCKSIDELENGTH && d < minDist) {
+            if (d < 25 * BLOCKSIDELENGTH && d < minDist) {
                 minDist = d;
                 targetSN = enemy.SN;
             }
         }
-        if(targetSN==-1&&!info.enemy_armies.empty()){
-            for(tagArmy& enemy:info.enemy_armies){
-                double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
-                if (d < 15 * BLOCKSIDELENGTH && d < minDist) {
-                    minDist = d;
-                    targetSN = enemy.SN;
-                 }
+    }
+    
+    // 优先级3：任意敌人
+    if (targetSN == -1 && !info.enemy_armies.empty()) {
+        for(tagArmy& enemy:info.enemy_armies){
+            double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
+            if (d < 15 * BLOCKSIDELENGTH && d < minDist) {
+                minDist = d;
+                targetSN = enemy.SN;
             }
         }
-        if(targetSN==-1&&stage>=stageAttack&&!info.enemy_buildings.empty()){
-            for(tagBuilding& enemy : info.enemy_buildings){
-                double eDR = blockToDetail(enemy.BlockDR);
-                double eUR = blockToDetail(enemy.BlockUR);
-                double d = calDistance(a.DR, a.UR, eDR, eUR);
-                if (d < 20 * BLOCKSIDELENGTH && d < minDist) {
-                    minDist = d;
-                    targetSN = enemy.SN;
-                 }
+    }
+    
+    // 优先级4：反攻阶段，攻击建筑
+    if (targetSN == -1 && stage >= stageAttack && !info.enemy_buildings.empty()) {
+        for(tagBuilding& enemy : info.enemy_buildings){
+            double eDR = blockToDetail(enemy.BlockDR);
+            double eUR = blockToDetail(enemy.BlockUR);
+            double d = calDistance(a.DR, a.UR, eDR, eUR);
+            if (d < 20 * BLOCKSIDELENGTH && d < minDist) {
+                minDist = d;
+                targetSN = enemy.SN;
             }
         }
-        if(targetSN!=-1){
-            HumanAction(a.SN,targetSN);
-        }
+    }
+    
+    if(targetSN != -1){
+        HumanAction(a.SN, targetSN);
     }
 }
 //祭司管理：转化敌人，躲避
@@ -691,7 +712,6 @@ void UsrAI::processData ()
         hasUpgraded = true;
     }
     static int lastEnemyFrame = 0;
-    static bool secondWaveEnded = false;
     if (!info.enemy_armies.empty()) {
         lastEnemyFrame = info.GameFrame;
     }
