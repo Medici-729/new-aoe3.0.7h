@@ -855,7 +855,7 @@ void UsrAI::processData ()
    static bool hasCompositeBow=false; 
    for(tagBuilding& b:info.buildings){
         if (b.Type == BUILDING_RANGE && b.Project == 0){
-            if (hasUpgraded && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
+            if (hasOrederUpgrad && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
                 BuildingAction(b.SN, BUILDING_RANGE_UPGRADE_COMPOSITE_BOW);
                 hasCompositeBow = true;
                 break;
