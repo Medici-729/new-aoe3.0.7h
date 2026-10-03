@@ -388,6 +388,7 @@ void UsrAI:: buildBuilding(tagInfo& info,int buildingType){
 }
 //军队管理
 void UsrAI::armymanage(tagInfo& info){
+    // 找祭司
     int priestSN = -1;
     double priestDR = 0, priestUR = 0;
     for (tagArmy& a : info.armies) {
@@ -398,90 +399,71 @@ void UsrAI::armymanage(tagInfo& info){
             break;
         }
     }
-    if (priestSN != -1) {
-        // 找祭司附近的敌人
-        for (tagArmy& enemy : info.enemy_armies) {
-            double d = calDistance(priestDR, priestUR, enemy.DR, enemy.UR);
-            if (d < 10 * BLOCKSIDELENGTH) {
-                int bestArmySN = -1;
-                double minArmyDist = 1e9;
-                for (tagArmy& a : info.armies) {
-                    if (a.Sort == AT_PRIEST) continue;
-                    if (a.Blood <= 0) continue;
-                    if (a.NowState != HUMAN_STATE_IDLE && 
-                        a.NowState != HUMAN_STATE_WALKING) continue;
-                    double ad = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
-                    if (ad < minArmyDist) {
-                        minArmyDist = ad;
-                        bestArmySN = a.SN;
-                    }
-                }
-                if (bestArmySN != -1) {
-                    HumanAction(bestArmySN, enemy.SN);
-                }
-            }
-        }
-    }
+    
+    // 士兵自动找目标
     for(tagArmy& a:info.armies){
         if(a.Sort==AT_PRIEST) continue;
         if(a.Blood<=0) continue;
         if(a.NowState!=HUMAN_STATE_IDLE&&a.NowState!=HUMAN_STATE_WALKING) continue;
+        
         int targetSN=-1;
         double minDist=1e9;
+        
+        // 优先级1：攻击祭司的敌人
         if (priestSN != -1) {
-        for(tagArmy& enemy:info.enemy_armies){
-            double dToPriest = calDistance(priestDR, priestUR, enemy.DR, enemy.UR);
-            if (dToPriest < 10 * BLOCKSIDELENGTH) {
-                double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
-                if (d < minDist) {
+            for(tagArmy& enemy:info.enemy_armies){
+                double dToPriest = calDistance(priestDR, priestUR, enemy.DR, enemy.UR);
+                if (dToPriest < 15 * BLOCKSIDELENGTH) {   // ← 扩大到 15 格
+                    double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
+                    if (d < minDist) {
+                        minDist = d;
+                        targetSN = enemy.SN;
+                    }
+                }
+            }
+        }
+        
+        // 优先级2：远程单位
+        if (targetSN == -1) {
+            for(tagArmy& enemy:info.enemy_armies){
+                if (enemy.Sort != AT_COMPOSITE_BOWMAN && enemy.Sort != AT_CHARIOT_ARCHER && enemy.Sort != AT_STONE_THROWER) 
+                    continue;
+                double d=calDistance(a.DR,a.UR,enemy.DR,enemy.UR);
+                if (d < 25 * BLOCKSIDELENGTH && d < minDist) {
                     minDist = d;
                     targetSN = enemy.SN;
                 }
             }
         }
-    }
-    
-    // 优先级2：远程单位
-    if (targetSN == -1) {
-        for(tagArmy& enemy:info.enemy_armies){
-            if (enemy.Sort != AT_COMPOSITE_BOWMAN && enemy.Sort != AT_CHARIOT_ARCHER && enemy.Sort != AT_STONE_THROWER) 
-                continue;
-            double d=calDistance(a.DR,a.UR,enemy.DR,enemy.UR);
-            if (d < 25 * BLOCKSIDELENGTH && d < minDist) {
-                minDist = d;
-                targetSN = enemy.SN;
+        
+        // 优先级3：任意敌人
+        if (targetSN == -1 && !info.enemy_armies.empty()) {
+            for(tagArmy& enemy:info.enemy_armies){
+                double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
+                if (d < 15 * BLOCKSIDELENGTH && d < minDist) {
+                    minDist = d;
+                    targetSN = enemy.SN;
+                }
             }
         }
-    }
-    
-    // 优先级3：任意敌人
-    if (targetSN == -1 && !info.enemy_armies.empty()) {
-        for(tagArmy& enemy:info.enemy_armies){
-            double d = calDistance(a.DR, a.UR, enemy.DR, enemy.UR);
-            if (d < 15 * BLOCKSIDELENGTH && d < minDist) {
-                minDist = d;
-                targetSN = enemy.SN;
+        
+        // 优先级4：反攻阶段，攻击建筑
+        if (targetSN == -1 && stage >= stageAttack && !info.enemy_buildings.empty()) {
+            for(tagBuilding& enemy : info.enemy_buildings){
+                double eDR = blockToDetail(enemy.BlockDR);
+                double eUR = blockToDetail(enemy.BlockUR);
+                double d = calDistance(a.DR, a.UR, eDR, eUR);
+                if (d < 20 * BLOCKSIDELENGTH && d < minDist) {
+                    minDist = d;
+                    targetSN = enemy.SN;
+                }
             }
         }
-    }
-    
-    // 优先级4：反攻阶段，攻击建筑
-    if (targetSN == -1 && stage >= stageAttack && !info.enemy_buildings.empty()) {
-        for(tagBuilding& enemy : info.enemy_buildings){
-            double eDR = blockToDetail(enemy.BlockDR);
-            double eUR = blockToDetail(enemy.BlockUR);
-            double d = calDistance(a.DR, a.UR, eDR, eUR);
-            if (d < 20 * BLOCKSIDELENGTH && d < minDist) {
-                minDist = d;
-                targetSN = enemy.SN;
-            }
+        
+        if(targetSN != -1){
+            HumanAction(a.SN, targetSN);
         }
     }
-    
-    if(targetSN != -1){
-        HumanAction(a.SN, targetSN);
-    }
-  }
 }
 //祭司管理：转化敌人，躲避
 void UsrAI::priestManage(tagInfo& info) {
@@ -855,7 +837,7 @@ void UsrAI::processData ()
    static bool hasCompositeBow=false; 
    for(tagBuilding& b:info.buildings){
         if (b.Type == BUILDING_RANGE && b.Project == 0){
-            if (hasOrederUpgrad && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
+            if (hasOrederUpgrade && !hasCompositeBow && info.Meat >= 180 && info.Wood >= 100){
                 BuildingAction(b.SN, BUILDING_RANGE_UPGRADE_COMPOSITE_BOW);
                 hasCompositeBow = true;
                 break;
