@@ -533,13 +533,16 @@ void UsrAI::priestManage(tagInfo& info) {
                 // 已经在箭塔旁边，检查敌人是否进射程
                 double enemyToTower = calDistance(enemyDR, enemyUR, towerDR, towerUR);
                 if (enemyToTower < 7 * BLOCKSIDELENGTH && convertCooldown == 0 && enemySN != -1) {
-                    bool convertingstate=false;
-                    for(tagArmy& a:info.armies){
-                        if(a.SN==priestSN&&a.WorkObjectSN==enemySN){
-                            convertingstate=true;
+                    bool priestIdle = false;
+                    for (tagArmy& a : info.armies) {
+                        if (a.SN == priestSN) {
+                            priestIdle = (a.NowState == HUMAN_STATE_IDLE);
                             break;
                         }
-                 if(!convertingstate) HumanAction(priestSN, enemySN);
+                    }
+                    if (priestIdle) {
+                        HumanAction(priestSN, enemySN);
+                    } 
                 }
             }
           }
