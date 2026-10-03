@@ -202,24 +202,28 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         int extra = max(farmercount - 8, 0);
         berryTarget = 2 + min(extra * 5 / 10, 4);
         if(berryTarget<=6){
-            huntTarget = 1 + extra * 2 / 10;
-            woodTarget = 3 + extra * 2 / 10;
-            buildTarget = 1 + extra * 2 / 10;
-            goldTarget = 1;
+            huntTarget = 1 + extra * 4 / 10;
+            woodTarget = 3 + extra * 4 / 10;
+            buildTarget = 1;
+            goldTarget = 1+extra*2/10;
         }else{
             huntTarget = 1+extra*4/10;
             woodTarget = 3+extra*4/10;
             buildTarget = 1+extra*2/10;
-            goldTarget = 1;
+            goldTarget = 2+extra*2/10;
         }
     } else {
         int extra = max(farmercount - 16, 0);
-        berryTarget = 1 + extra * 1 / 10;
-        huntTarget = 1 + extra * 2 / 10;
+        berryTarget = 2 + extra * 1 / 10;
+        huntTarget = 2 + extra * 2 / 10;
         woodTarget = 3 + extra * 2 / 10;
-        buildTarget = 1 + extra * 2 / 10;
+        buildTarget = 2 + extra * 2 / 10;
         goldTarget = 3 + extra * 1 / 10;
-        farmTarget = 6 + extra * 2 / 10;
+        int farmBuildingCount = 0;
+        for (tagBuilding& b : info.buildings) {
+            if (b.Type == BUILDING_FARM && b.Percent > 0) farmBuildingCount++;
+        }
+        farmTarget = farmBuildingCount;
     }
     static bool reassignedAfterUpgrade = false;
     if (hasUpgraded && !reassignedAfterUpgrade) {
@@ -755,7 +759,7 @@ void UsrAI::processData ()
    static bool hasOrederUpgrade=false;
    for(tagBuilding& b:info.buildings){
        if(b.SN==centerSN&&b.Project==0){
-           if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&farmercount<24){
+           if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&farmercount<24&&(stage<stageDefense1||stage>=stageDefense2)){
                BuildingAction(centerSN,BUILDING_CENTER_CREATEFARMER);
                break;
            }
@@ -835,32 +839,32 @@ void UsrAI::processData ()
         }
    }
  
-   int broadswordCount = 0, bowmanCount = 0, cavalryCount = 0, hopliteCount = 0;
+   int broadswordCount = 0, bowmanCount = 0, cavalryCount = 0, hopliteCount = 0, clubmanCount = 0;
     for (tagArmy& a : info.armies) {
         if (a.Sort == AT_BROADSWORDSMAN) broadswordCount++;
         if (a.Sort == AT_COMPOSITE_BOWMAN) bowmanCount++;
         if (a.Sort == AT_CAVALRY) cavalryCount++;
         if (a.Sort == AT_HOPLITE) hopliteCount++;
+        if(a.Sort==AT_CLUBMAN) clubmanCount++;
     }
 
    //兵营训练士兵
-   static bool hasUpgradedClubman = false;
+   //static bool hasUpgradedClubman = false;
    if(hasUpgraded){
        for(tagBuilding& b:info.buildings){
            if(b.Type==BUILDING_ARMYCAMP&&b.Project==0){
                if(broadswordCount<5&&info.civilizationStage>=CIVILIZATION_BRONZEAGE&&info.Meat>=35&&info.Gold>=15&&info.Human_Num<info.Human_MaxNum){
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_BROADSWORD);
-                  continue;
                 }
-            //    if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum){
-            //       BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
-            //       continue;
-            //     }
-            //    if(!hasUpgradedClubman&&info.Meat>=100){
-            //       BuildingAction(b.SN, BUILDING_ARMYCAMP_UPGRADE_CLUBMAN);
-            //       hasUpgradedClubman=true;
-            //       continue;
-            //     }
+                if(clubmanCount<3&&info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&){
+                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
+                   continue;
+                 }
+                // if(!hasUpgradedClubman&&info.Meat>=100){
+                //    BuildingAction(b.SN, BUILDING_ARMYCAMP_UPGRADE_CLUBMAN);
+                //    hasUpgradedClubman=true;
+                //    continue;
+                //  }
            }
        }
    }
