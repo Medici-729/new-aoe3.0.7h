@@ -212,7 +212,15 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
             buildTarget = 1+extra*2/10;
             goldTarget = 2+extra*2/10;
         }
-    } else {
+    } 
+    if(hasUpgraded&&stage<stageDefense2){
+        berryTarget = 4;
+        huntTarget = 4;
+        woodTarget = 4;
+        buildTarget = 1;
+        goldTarget = 3;
+    }
+    if(stage>=stageDefense2) {
         int extra = max(farmercount - 16, 0);
         berryTarget = 3 + extra * 1 / 10;
         huntTarget = 3 + extra * 2 / 10;
@@ -542,10 +550,9 @@ void UsrAI::priestManage(tagInfo& info) {
                     }
                     if (priestIdle) {
                         HumanAction(priestSN, enemySN);
-                    } 
+                    `} 
                 }
             }
-          }
         }
         return;
     }
@@ -813,23 +820,6 @@ void UsrAI::processData ()
            buildBuilding(info, BUILDING_COLLAGE);
        }
    }
-   //仓库研发攻防
-   static bool hasTool=false;
-   static bool hasDefense=false;
-   for(tagBuilding& b:info.buildings){
-       if(b.Type==BUILDING_STOCK&&b.Project==0&&stage>=stageDefense2&& info.GameFrame - upgradeFrame >= 25){
-           if(!hasTool&&info.Meat>=100){
-             BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
-             hasTool=true;
-             continue;
-            }
-           if(stage>=stageDefense2&&info.Meat>=75){
-              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_DEFENSE_INFANTRY);
-              hasDefense = true;
-              continue;
-            }
-       }
-   }
     //靶场研发复合弓
    static bool hasCompositeBow=false; 
    for(tagBuilding& b:info.buildings){
@@ -899,6 +889,23 @@ void UsrAI::processData ()
             //        continue;
             //    }
            }
+       }
+   }
+   //仓库研发攻防
+   static bool hasTool=false;
+   static bool hasDefense=false;
+   for(tagBuilding& b:info.buildings){
+       if(b.Type==BUILDING_STOCK&&b.Project==0&& info.GameFrame - upgradeFrame >= 25){
+           if(!hasTool&&info.Meat>=100&&stage>=stageDefense2){
+             BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_USETOOL);
+             hasTool=true;
+             continue;
+            }
+           if(stage>=stageDefense2&&info.Meat>=75){
+              BuildingAction(b.SN, BUILDING_STOCK_UPGRADE_DEFENSE_INFANTRY);
+              hasDefense = true;
+              continue;
+            }
        }
    }
    //学院训练重装步兵
