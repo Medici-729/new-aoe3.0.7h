@@ -881,7 +881,7 @@ void UsrAI::processData ()
                   BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_BROADSWORD);
                   continue;
                 }
-                if(clubmanCount<3&&info.Meat>=50&&info.Human_Num<info.Human_MaxNum){
+                if(clubmanCount<3&&info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&info.Gold<15){
                    BuildingAction(b.SN, BUILDING_ARMYCAMP_CREATE_CLUBMAN);
                    continue;
                  }
