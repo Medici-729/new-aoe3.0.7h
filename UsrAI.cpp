@@ -481,6 +481,7 @@ void UsrAI::armymanage(tagInfo& info){
     if(targetSN != -1){
         HumanAction(a.SN, targetSN);
     }
+  }
 }
 //祭司管理：转化敌人，躲避
 void UsrAI::priestManage(tagInfo& info) {
@@ -760,7 +761,7 @@ void UsrAI::processData ()
        if(f.FarmerSort==FARMERTYPE_FARMER&&f.Blood>0) farmercount++;
     }
     manageFarmers(info);
-    if (info.Human_MaxNum < 16 && info.Wood >= 30 && !hasUpgraded) {
+    if (info.Human_MaxNum < 20 && info.Wood >= 30 && !hasUpgraded) {
         buildBuilding(info, BUILDING_HOME);
     }
     if (hasUpgraded && info.Human_MaxNum < 48 && info.Wood >= 30) {
@@ -776,7 +777,7 @@ void UsrAI::processData ()
         buildHuntWarehouse(info);
     }
     static bool homeenough=false;
-    if(info.Human_MaxNum>=16) homeenough=true;
+    if(info.Human_MaxNum>=20) homeenough=true;
     bool hasMarket=false;
     bool hasArmyCamp=false;
     bool hasRange=false;
