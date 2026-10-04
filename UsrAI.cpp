@@ -222,12 +222,11 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         goldTarget = 3;
     }
     if(secondWaveEnded) {
-        int extra = max(farmercount - 16, 0);
-        berryTarget = 3 + extra * 1 / 10;
-        huntTarget = 3 + extra * 2 / 10;
-        woodTarget = 3 + extra * 2 / 10;
-        buildTarget = 2 + extra * 2 / 10;
-        goldTarget = 3 + extra * 1 / 10;
+        berryTarget = 3 ;
+        huntTarget = 3 ;
+        woodTarget = 3;
+        buildTarget = 3 ;
+        goldTarget = 3 ;
         int farmBuildingCount = 0;
         for (tagBuilding& b : info.buildings) {
             if (b.Type == BUILDING_FARM && b.Percent > 0) farmBuildingCount++;
@@ -782,7 +781,7 @@ void UsrAI::processData ()
    static bool hasOrederUpgrade=false;
    for(tagBuilding& b:info.buildings){
        if(b.SN==centerSN&&b.Project==0){
-           if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&farmercount<24&&(stage<stageDefense1||stage>=stageDefense2)){
+           if(info.Meat>=50&&info.Human_Num<info.Human_MaxNum&&farmercount<24&&(stage<stageDefense1||secondWaveEnded)){
                BuildingAction(centerSN,BUILDING_CENTER_CREATEFARMER);
                break;
            }
@@ -879,7 +878,7 @@ void UsrAI::processData ()
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_RANGE&&b.Project==0){
            if(hasUpgraded&&info.Human_Num<info.Human_MaxNum&&hasCompositeBow){
-                if (bowmanCount < 10 &&hasCompositeBow && info.Meat >= 40 && info.Gold >= 20) {
+                if (bowmanCount < 8 &&hasCompositeBow && info.Meat >= 40 && info.Gold >= 20) {
                     BuildingAction(b.SN, BUILDING_RANGE_CREATE_COMPOSITE_BOWMAN);
                 } 
                 // else if (info.Wood >= 20 && info.Meat >= 40) {
@@ -904,6 +903,17 @@ void UsrAI::processData ()
            }
        }
    }
+   //学院训练重装步兵
+   if(stage>=stageDefense1){
+       for(tagBuilding& b:info.buildings){
+           if(b.Type==BUILDING_COLLAGE&&b.Project==0){
+               if(hopliteCount < 4 &&info.Human_Num<info.Human_MaxNum&&info.Meat>=60&&info.Gold>=40){
+                   BuildingAction(b.SN, BUILDING_COLLAGE_CREATE_HOPLITE);
+                   continue;
+               }
+           }
+       }
+   }
    //仓库研发攻防
    static bool hasTool=false;
    static bool hasDefense=false;
@@ -919,17 +929,6 @@ void UsrAI::processData ()
               hasDefense = true;
               continue;
             }
-       }
-   }
-   //学院训练重装步兵
-   if(stage>=stageDefense1){
-       for(tagBuilding& b:info.buildings){
-           if(b.Type==BUILDING_COLLAGE&&b.Project==0){
-               if(hopliteCount < 4 &&info.Human_Num<info.Human_MaxNum&&info.Meat>=60&&info.Gold>=40){
-                   BuildingAction(b.SN, BUILDING_COLLAGE_CREATE_HOPLITE);
-                   continue;
-               }
-           }
        }
    }
    //市场研发科技
