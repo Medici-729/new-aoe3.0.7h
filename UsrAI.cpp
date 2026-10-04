@@ -32,6 +32,11 @@ static int terrainCache[MAP_SIZE][MAP_SIZE];
 #define FARMER_GOLD 8
 static map<int, int> farmer_state;
 static vector<int> taskBuild;
+static bool armyGathered = false;          // 是否已集结
+static double gatherDR = -1, gatherUR = -1;  // 集结点
+static int enemySightDR = -1, enemySightUR = -1;  // 记录看到敌人的位置
+static int attackerSN = -1;              // 突击者
+static double attackerStartDR = -1, attackerStartUR = -1;  // 突击者初始位置
 
 //距离计算函数
 double  UsrAI::calDistance(double dr1,double ur1,double dr2,double ur2){
@@ -375,14 +380,6 @@ void UsrAI::manageFarmers(tagInfo& info) {
                         break;
                     }
                 }
-                if (info.Human_MaxNum < 48 && info.Wood >= 30) {
-                    int buildDR, buildUR;
-                    if (findEmptyBlock(buildDR, buildUR, 2)) {
-                        HumanBuild(f.SN, BUILDING_HOME, buildDR, buildUR);
-                        break;
-                    }
-                }
-                break;
             }
         }
         return;
@@ -706,7 +703,136 @@ void UsrAI::arrowTower(tagInfo& info){
         }
     }
 }
-
+void UsrAI::gatherArmy(tagInfo& info) {
+    // 1. 确定集结点（敌人位置向主营方向退后几格）
+    if (gatherDR == -1 && enemySightDR != -1) {
+        int dirDR = centerDR - enemySightDR;
+        int dirUR = centerUR - enemySightUR;
+        double len = sqrt(dirDR*dirDR + dirUR*dirUR);
+        if (len > 0.1) {
+            gatherDR = enemySightDR + (dirDR / len) * 5;
+            gatherUR = enemySightUR + (dirUR / len) * 5;
+        }
+    }
+    
+    if (gatherDR == -1) return;
+    
+    // 2. 集结区域 3×3，每个点一个兵
+    static int gatherPositions[9][2] = {
+        {-1,-1}, {0,-1}, {1,-1},
+        {-1, 0}, {0, 0}, {1, 0},
+        {-1, 1}, {0, 1}, {1, 1}
+    };
+    
+    int idx = 0;
+    for (tagArmy& a : info.armies) {
+        if (a.Sort == AT_PRIEST) continue;
+        if (a.Blood <= 0) continue;
+        if (a.NowState != HUMAN_STATE_IDLE && a.NowState != HUMAN_STATE_WALKING) continue;
+        
+        int posDR = gatherDR + gatherPositions[idx % 9][0];
+        int posUR = gatherUR + gatherPositions[idx % 9][1];
+        idx++;
+        
+        HumanMove(a.SN, blockToDetail(posDR), blockToDetail(posUR));
+    }
+    
+    // 3. 祭司在集结区域离敌人最远的一格
+    for (tagArmy& a : info.armies) {
+        if (a.Sort != AT_PRIEST) continue;
+        if (a.Blood <= 0) continue;
+        
+        int bestDR = gatherDR - 1;
+        int bestUR = gatherUR + 1;
+        HumanMove(a.SN, blockToDetail(bestDR), blockToDetail(bestUR));
+    }
+}
+void UsrAI::attackTactic(tagInfo& info) {
+    // 1. 选择突击者（最靠近敌方角落的军队）
+    if (attackerSN == -1) {
+        int bestArmySN = -1;
+        double minDist = 1e9;
+        for (tagArmy& a : info.armies) {
+            if (a.Sort == AT_PRIEST) continue;
+            if (a.Blood <= 0) continue;
+            if (a.NowState != HUMAN_STATE_IDLE && a.NowState != HUMAN_STATE_WALKING) continue;
+            
+            double d = calDistance(a.DR, a.UR, 
+                                   blockToDetail(enemySightDR), 
+                                   blockToDetail(enemySightUR));
+            if (d < minDist) {
+                minDist = d;
+                bestArmySN = a.SN;
+            }
+        }
+        if (bestArmySN != -1) {
+            attackerSN = bestArmySN;
+            for (tagArmy& a : info.armies) {
+                if (a.SN == attackerSN) {
+                    attackerStartDR = a.DR;
+                    attackerStartUR = a.UR;
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (attackerSN == -1) return;
+    
+    // 2. 检查突击者是否被攻击或附近有敌人
+    bool enemyNearby = false;
+    double attackerDR = 0, attackerUR = 0;
+    
+    for (tagArmy& a : info.armies) {
+        if (a.SN != attackerSN) continue;
+        if (a.Blood <= 0) { attackerSN = -1; return; }
+        attackerDR = a.DR;
+        attackerUR = a.UR;
+        break;
+    }
+    
+    for (tagArmy& e : info.enemy_armies) {
+        double d = calDistance(attackerDR, attackerUR, e.DR, e.UR);
+        if (d < 8 * BLOCKSIDELENGTH) {
+            enemyNearby = true;
+            break;
+        }
+    }
+    
+    // 3. 根据情况移动
+    if (enemyNearby) {
+        HumanMove(attackerSN, attackerStartDR, attackerStartUR);
+    } else {
+        HumanMove(attackerSN, blockToDetail(enemySightDR), blockToDetail(enemySightUR));
+        
+        for (tagArmy& a : info.armies) {
+            if (a.SN == attackerSN) continue;
+            if (a.Sort == AT_PRIEST) continue;
+            if (a.Blood <= 0) continue;
+            if (a.NowState != HUMAN_STATE_IDLE && a.NowState != HUMAN_STATE_WALKING) continue;
+            
+            double dirDR = blockToDetail(enemySightDR) - a.DR;
+            double dirUR = blockToDetail(enemySightUR) - a.UR;
+            double len = sqrt(dirDR*dirDR + dirUR*dirUR);
+            if (len > 0.1) {
+                double moveDR = a.DR + (dirDR / len) * 2 * BLOCKSIDELENGTH;
+                double moveUR = a.UR + (dirUR / len) * 2 * BLOCKSIDELENGTH;
+                HumanMove(a.SN, moveDR, moveUR);
+            }
+        }
+    }
+    
+    // 4. 突击者回到初始位置，取消突击者标志
+    double dToStart = calDistance(attackerDR, attackerUR, attackerStartDR, attackerStartUR);
+    if (dToStart < 2 * BLOCKSIDELENGTH) {
+        attackerSN = -1;
+    }
+    
+    // 5. 没有敌人，重置
+    if (info.enemy_armies.empty()) {
+        attackerSN = -1;
+    }
+}
 /* ============================== 主入口 ============================== */
 void UsrAI::processData ()
 {   tagInfo info = getInfo();
@@ -763,10 +889,14 @@ void UsrAI::processData ()
        if(f.FarmerSort==FARMERTYPE_FARMER&&f.Blood>0) farmercount++;
     }
     manageFarmers(info);
-    if (info.Human_MaxNum < 20 && info.Wood >= 30 && !hasUpgraded) {
+    int homeCount = 0;
+    for (tagBuilding& b : info.buildings) {
+        if (b.Type == BUILDING_HOME && b.Percent > 0) homeCount++;
+    }
+    if (homeCount<5 && info.Wood >= 30 && !hasUpgraded) {
         buildBuilding(info, BUILDING_HOME);
     }
-    if (hasUpgraded && info.Human_MaxNum < 48 && info.Wood >= 30) {
+    if (hasUpgraded && homeCount<12 && info.Wood >= 30) {
         buildBuilding(info, BUILDING_HOME);
     }
     int HuntwareNum=0;
@@ -843,7 +973,7 @@ void UsrAI::processData ()
        if (!hasRange && info.Wood >= 150&&hasArmyCamp) {
            buildBuilding(info, BUILDING_RANGE);
        }
-       if (!hasStable&& info.Wood >= 150&&hasArmyCamp) {
+       if (hasRange&&!hasStable&& info.Wood >= 150&&hasArmyCamp) {
            buildBuilding(info, BUILDING_STABLE);
        }
        if (info.Human_Num <48 && info.Wood >= 30&&hasUpgraded) {
@@ -987,5 +1117,30 @@ void UsrAI::processData ()
 //        }
 //    }
    armymanage(info);
-
+   static bool thirdWaveEnded = false;
+   static int lastEnemyFrame = 0;
+   if (!info.enemy_armies.empty()) {
+        lastEnemyFrame = info.GameFrame;
+    }
+   if (info.GameFrame >= 21000 && info.GameFrame - lastEnemyFrame > 300) {
+        thirdWaveEnded = true;
+   }
+   if (thirdWaveEnded) {
+    if (!armyGathered) {
+        gatherArmy(info);
+        int gatheredCount = 0;
+        for (tagArmy& a : info.armies) {
+            if (a.Sort == AT_PRIEST) continue;
+            double d = calDistance(a.DR, a.UR, 
+                                   blockToDetail(gatherDR), 
+                                   blockToDetail(gatherUR));
+            if (d < 5 * BLOCKSIDELENGTH) gatheredCount++;
+        }
+        if (gatheredCount >= 10) {
+            armyGathered = true;
+        }
+    } else {
+        attackTactic(info);
+    }
+   }
 }
