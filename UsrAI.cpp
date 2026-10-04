@@ -238,7 +238,9 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         }
         farmTarget = farmBuildingCount;
     }
+    static int lastStage = -1;
     static bool reassignedAfterUpgrade = false;
+    static bool reassignedAfterSecondWave = false;
     if (hasUpgraded && !reassignedAfterUpgrade) {
         for (auto& p : farmer_state) {
             if (goldCount >= goldTarget) break;
