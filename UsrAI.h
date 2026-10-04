@@ -45,6 +45,8 @@ private:
        void priestManage(tagInfo& info);
        void priestFindway(tagInfo& info, int priestSN, double priestDR, double priestUR);
        void arrowTower(tagInfo& info);
+       void gatherArmy(tagInfo& info);
+       void attackTactic(tagInfo& info);
 
 };
 

@@ -209,9 +209,9 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         berryTarget = 2 + min(extra * 5 / 10, 4);
         if(berryTarget<=6){
             huntTarget = 1 + extra * 4 / 10;
-            woodTarget = 3 + extra * 4 / 10;
+            woodTarget = 3 + extra * 6 / 10;
             buildTarget = 1;
-            goldTarget = 1+extra*2/10;
+            goldTarget = 1;
         }else{
             huntTarget = 1+extra*4/10;
             woodTarget = 3+extra*4/10;
@@ -1118,11 +1118,11 @@ void UsrAI::processData ()
 //    }
    armymanage(info);
    static bool thirdWaveEnded = false;
-   static int lastEnemyFrame = 0;
+   static int lastEnemyFrame1 = 0;
    if (!info.enemy_armies.empty()) {
-        lastEnemyFrame = info.GameFrame;
+        lastEnemyFrame1 = info.GameFrame;
     }
-   if (info.GameFrame >= 21000 && info.GameFrame - lastEnemyFrame > 300) {
+   if (info.GameFrame >= 21000 && info.GameFrame - lastEnemyFrame1 > 300) {
         thirdWaveEnded = true;
    }
    if (thirdWaveEnded) {
