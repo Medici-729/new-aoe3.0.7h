@@ -317,7 +317,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 } else {
-                    farmer_state[f.SN] = FARMER_HUNT;   
+                    farmer_state[f.SN] = FARMER_WOOD;   
                 }
                 break;
             }
@@ -326,7 +326,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 } else {
-                    farmer_state[f.SN] = FARMER_WOOD;   
+                    farmer_state[f.SN] = FARMER_FARM;   
                 }
                 break;
             }
@@ -360,6 +360,27 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 }
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
+                }
+                break;
+            }
+            case FARMER_BUILD: {  
+                int farmCount = 0;
+                for (tagBuilding& b : info.buildings) {
+                    if (b.Type == BUILDING_FARM && b.Percent > 0) farmCount++;
+                }
+                if (farmCount < 10 && info.Wood >= 75) {
+                    int buildDR, buildUR;
+                    if (findEmptyBlock(buildDR, buildUR, 3)) {
+                        HumanBuild(f.SN, BUILDING_FARM, buildDR, buildUR);
+                        break;
+                    }
+                }
+                if (info.Human_MaxNum < 48 && info.Wood >= 30) {
+                    int buildDR, buildUR;
+                    if (findEmptyBlock(buildDR, buildUR, 2)) {
+                        HumanBuild(f.SN, BUILDING_HOME, buildDR, buildUR);
+                        break;
+                    }
                 }
                 break;
             }
