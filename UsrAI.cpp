@@ -256,6 +256,37 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         }
         reassignedAfterUpgrade = true;
     }
+    if (secondWaveEnded && !reassignedAfterSecondWave) {
+        // 重新统计
+        berryCount = 0; huntCount = 0; woodCount = 0;
+        buildCount = 0; goldCount = 0; farmWorkerCount = 0;
+        for (auto& p : farmer_state) {
+            if (p.second == FARMER_BERRY) berryCount++;
+            if (p.second == FARMER_HUNT) huntCount++;
+            if (p.second == FARMER_WOOD) woodCount++;
+            if (p.second == FARMER_BUILD) buildCount++;
+            if (p.second == FARMER_GOLD) goldCount++;
+            if (p.second == FARMER_FARM) farmWorkerCount++;
+        }
+        
+        // 把多余的改成新任务
+        for (auto& p : farmer_state) {
+            if (p.first == builderSN) continue;
+            
+            if (berryCount > berryTarget) {
+                p.second = FARMER_HUNT; berryCount--; huntCount++;
+            } else if (huntCount > huntTarget) {
+                p.second = FARMER_WOOD; huntCount--; woodCount++;
+            } else if (woodCount > woodTarget) {
+                p.second = FARMER_GOLD; woodCount--; goldCount++;
+            } else if (goldCount > goldTarget) {
+                p.second = FARMER_FARM; goldCount--; farmWorkerCount++;
+            } else if (buildCount > buildTarget && p.first != builderSN) {
+                p.second = FARMER_FARM; buildCount--; farmWorkerCount++;
+            }
+        }
+        reassignedAfterSecondWave = true;
+    }
     for (tagFarmer& f : info.farmers) {
         if (f.FarmerSort != FARMERTYPE_FARMER) continue;
         if (f.Blood <= 0) continue;
