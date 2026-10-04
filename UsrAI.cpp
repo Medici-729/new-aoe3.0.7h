@@ -322,7 +322,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 } else {
-                    farmer_state[f.SN] = FARMER_WOOD;   
+                    farmer_state[f.SN] = FARMER_FARM;   
                 }
                 break;
             }
@@ -331,7 +331,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 if (targetSN != -1) {
                     HumanAction(f.SN, targetSN);
                 } else {
-                    farmer_state[f.SN] = FARMER_FARM;   
+                    farmer_state[f.SN] = FARMER_WOOD;   
                 }
                 break;
             }
@@ -559,19 +559,29 @@ void UsrAI::priestManage(tagInfo& info) {
                     HumanMove(priestSN, towerDR, towerUR + 1.5 * BLOCKSIDELENGTH);
                 }
             } else {
-                // 已经在箭塔旁边，检查敌人是否进射程
-                double enemyToTower = calDistance(enemyDR, enemyUR, towerDR, towerUR);
-                if (enemyToTower < 7 * BLOCKSIDELENGTH && convertCooldown == 0 && enemySN != -1) {
-                    bool priestIdle = false;
-                    for (tagArmy& a : info.armies) {
-                        if (a.SN == priestSN) {
-                            priestIdle = (a.NowState == HUMAN_STATE_IDLE);
-                            break;
-                        }
+                // 已经在箭塔旁边，检查祭司是否空闲
+            bool priestIdle = false;
+            for (tagArmy& a : info.armies) {
+                if (a.SN == priestSN) {
+                    priestIdle = (a.NowState == HUMAN_STATE_IDLE);
+                    break;
+                }
+            }
+            
+            // 祭司空闲且冷却好了，转换最近的敌人
+            if (priestIdle && convertCooldown == 0) {
+                int targetSN = -1;
+                double minDist = 1e9;
+                for (tagArmy& e : info.enemy_armies) {
+                    double d = calDistance(priestDR, priestUR, e.DR, e.UR);
+                    if (d < 12 * BLOCKSIDELENGTH && d < minDist) {
+                        minDist = d;
+                        targetSN = e.SN;
                     }
-                    if (priestIdle) {
-                        HumanAction(priestSN, enemySN);
-                    }
+                }
+                if (targetSN != -1) {
+                    HumanAction(priestSN, targetSN);
+                }
                 }
             }
         }
