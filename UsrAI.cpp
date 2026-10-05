@@ -256,6 +256,13 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
                 farmWorkerCount++;
             }
         }
+        for (auto& p : farmer_state) {
+            if (buildCount >= buildTarget) break;
+            if (p.first == builderSN) continue;
+            if (p.second == FARMER_FARM)       { p.second = FARMER_BUILD; buildCount++; farmWorkerCount--; }
+            else if (p.second == FARMER_BERRY) { p.second = FARMER_BUILD; buildCount++; berryCount--; }
+            else if (p.second == FARMER_HUNT)  { p.second = FARMER_BUILD; buildCount++; huntCount--; }
+        }
         reassignedAfterUpgrade = true;
     }
     if (secondWaveEnded && !reassignedAfterSecondWave) {
@@ -925,6 +932,23 @@ void UsrAI::processData ()
     }
     updateTerrainCache(info);
     updateStage(info);
+    for (tagBuilding& eb : info.enemy_buildings) {
+        if (eb.Percent <= 0) continue;
+        if (eb.Type == BUILDING_SIEGE) {          // 通关目标：敌方武器工程厂，优先记住它
+            enemySightDR = eb.BlockDR;
+            enemySightUR = eb.BlockUR;
+            break;
+        }
+    }
+    if (enemySightDR == -1 && !info.enemy_buildings.empty()) {
+        enemySightDR = info.enemy_buildings[0].BlockDR;   // 先任意记一个敌方建筑
+        enemySightUR = info.enemy_buildings[0].BlockUR;
+    }
+    if (enemySightDR == -1 && !info.enemy_armies.empty()) {
+        enemySightDR = info.enemy_armies[0].BlockDR;      // 实在没有建筑就用看到的敌兵位置
+        enemySightUR = info.enemy_armies[0].BlockUR;
+    }
+
     priestManage(info);
     arrowTower(info);
     int farmercount=0;
@@ -1090,11 +1114,11 @@ void UsrAI::processData ()
                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_CAVALRY);
                    continue;
                }
-            //    if(info.Human_Num<=info.Human_MaxNum&&info.Meat>=60){
-            //        BuildingAction(b.SN, BUILDING_STABLE_CREATE_SCOUT);
-            //        continue;
-            //    }
-           }
+                if(info.Human_Num<=info.Human_MaxNum&&info.Meat>=60){
+                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_SCOUT);
+                    continue;
+                }
+            }
        }
    }
    //学院训练重装步兵
