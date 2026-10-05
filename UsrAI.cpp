@@ -298,7 +298,10 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
             buildCount++;
             continue;
         }
-        if (berryCount < berryTarget) {
+        if (buildCount < buildTarget) {
+            farmer_state[f.SN] = FARMER_BUILD;
+            buildCount++;
+        }else if (berryCount < berryTarget) {
             farmer_state[f.SN] = FARMER_BERRY;
             berryCount++;
         } else if (huntCount < huntTarget) {
@@ -307,10 +310,7 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         } else if (woodCount < woodTarget) {
             farmer_state[f.SN] = FARMER_WOOD;
             woodCount++;
-        } else if (buildCount < buildTarget) {
-            farmer_state[f.SN] = FARMER_BUILD;
-            buildCount++;
-        } else if (goldCount < goldTarget) {
+        }  else if (goldCount < goldTarget) {
             farmer_state[f.SN] = FARMER_GOLD;
             goldCount++;
         } else if (farmWorkerCount < farmTarget) { 
