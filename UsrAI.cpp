@@ -273,7 +273,7 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
             if (p.second == FARMER_BERRY) berryCount++;
             if (p.second == FARMER_HUNT) huntCount++;
             if (p.second == FARMER_WOOD) woodCount++;
-            if (p.second == FARMER_BUILD) buildCount++;
+            if (p.second == FARMER_BUILD&&p.first != builderSN) buildCount++;
             if (p.second == FARMER_GOLD) goldCount++;
             if (p.second == FARMER_FARM) farmWorkerCount++;
         }
@@ -1096,7 +1096,7 @@ void UsrAI::processData ()
    for(tagBuilding& b:info.buildings){
        if(b.Type==BUILDING_RANGE&&b.Project==0){
            if(hasUpgraded&&info.Human_Num<info.Human_MaxNum&&hasCompositeBow){
-                if (bowmanCount < 8 &&hasCompositeBow && info.Meat >= 40 && info.Gold >= 20) {
+                if (bowmanCount < 5 &&hasCompositeBow && info.Meat >= 40 && info.Gold >= 20) {
                     BuildingAction(b.SN, BUILDING_RANGE_CREATE_COMPOSITE_BOWMAN);
                 } 
                 // else if (info.Wood >= 20 && info.Meat >= 40) {
@@ -1114,10 +1114,10 @@ void UsrAI::processData ()
                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_CAVALRY);
                    continue;
                }
-                if(info.Human_Num<=info.Human_MaxNum&&info.Meat>=60){
-                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_SCOUT);
-                    continue;
-                }
+//                if(info.Human_Num<=info.Human_MaxNum&&info.Meat>=60){
+//                    BuildingAction(b.SN, BUILDING_STABLE_CREATE_SCOUT);
+//                    continue;
+//                }
             }
        }
    }
