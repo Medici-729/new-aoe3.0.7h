@@ -37,7 +37,7 @@ static double gatherDR = -1, gatherUR = -1;  // 集结点
 static int enemySightDR = -1, enemySightUR = -1;  // 记录看到敌人的位置
 static int attackerSN = -1;              // 突击者
 static double attackerStartDR = -1, attackerStartUR = -1;  // 突击者初始位置
-
+static int lastBuildOrderFrame = -1;
 //距离计算函数
 double  UsrAI::calDistance(double dr1,double ur1,double dr2,double ur2){
     double ddr=dr1-dr2;
@@ -157,6 +157,7 @@ void UsrAI::updateStage(tagInfo& info) {
     }
 }
 void UsrAI::buildHuntWarehouse(tagInfo& info){
+        if (lastBuildOrderFrame == info.GameFrame) return;
         int gazelleDR = -1, gazelleUR = -1;
         for (tagResource& r : info.resources) {
             if (r.Type != RESOURCE_GAZELLE) continue;
@@ -188,6 +189,7 @@ void UsrAI::buildHuntWarehouse(tagInfo& info){
             if (bestDR == -1) return;  
             if (builderSN == -1) return;   
             HumanBuild(builderSN, BUILDING_STOCK, bestDR, bestUR);
+            lastBuildOrderFrame = info.GameFrame;
 }
 void UsrAI::assignNewFarmers(tagInfo& info) {
     int berryCount = 0, huntCount = 0, woodCount = 0, buildCount = 0,farmCount=0,goldCount=0,farmWorkerCount = 0;
@@ -277,7 +279,20 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
             if (p.second == FARMER_GOLD) goldCount++;
             if (p.second == FARMER_FARM) farmWorkerCount++;
         }
-        
+        int buildNeed = buildTarget - buildCount;
+        for (auto& p : farmer_state) {
+            if (buildNeed <= 0) break;
+            if (p.first == builderSN) continue;
+            if (p.second == FARMER_FARM && farmWorkerCount > farmTarget) {
+                p.second = FARMER_BUILD; farmWorkerCount--; buildCount++; buildNeed--;
+            } else if (p.second == FARMER_BERRY && berryCount > 2) {
+                p.second = FARMER_BUILD; berryCount--; buildCount++; buildNeed--;
+            } else if (p.second == FARMER_HUNT && huntCount > 2) {
+                p.second = FARMER_BUILD; huntCount--; buildCount++; buildNeed--;
+            } else if (p.second == FARMER_GOLD && goldCount > 2) {
+                p.second = FARMER_BUILD; goldCount--; buildCount++; buildNeed--;
+            }
+        }
         // 把多余的改成新任务
         for (auto& p : farmer_state) {
             if (p.first == builderSN) continue;
@@ -323,6 +338,9 @@ void UsrAI::assignNewFarmers(tagInfo& info) {
         } else if (farmWorkerCount < farmTarget) { 
             farmer_state[f.SN] = FARMER_FARM;
             farmWorkerCount++;
+        }else{
+            farmer_state[f.SN] = FARMER_WOOD;
+            woodCount++;
         }
     }
 }
@@ -354,7 +372,9 @@ void UsrAI::manageFarmers(tagInfo& info) {
         if (f.FarmerSort != FARMERTYPE_FARMER) continue;
         if (f.Blood <= 0) continue;
         if (f.NowState != HUMAN_STATE_IDLE) continue;
-        if (f.SN == builderSN) continue;  
+        if (f.SN == builderSN) continue;
+        auto itState = farmer_state.find(f.SN);
+        if (itState == farmer_state.end()) continue;  
         int state = farmer_state[f.SN];
         switch (state) {
             case FARMER_BERRY: {
@@ -413,7 +433,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 for (tagBuilding& b : info.buildings) {
                     if (b.Type == BUILDING_FARM && b.Percent > 0) farmCount++;
                 }
-                if (farmCount < 10 && info.Wood >= 75) {
+                if (farmCount < 12 && info.Wood >= 75) {
                     int buildDR, buildUR;
                     if (findEmptyBlock(buildDR, buildUR, 3)) {
                         HumanBuild(f.SN, BUILDING_FARM, buildDR, buildUR);
@@ -428,6 +448,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
 //建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
 void UsrAI:: buildBuilding(tagInfo& info,int buildingType){
    if (builderSN == -1) return;
+   if (lastBuildOrderFrame == info.GameFrame) return;
     bool builderIdle = false;
     for (tagFarmer& f : info.farmers) {
         if (f.SN == builderSN && f.Blood > 0 && 
@@ -442,6 +463,7 @@ void UsrAI:: buildBuilding(tagInfo& info,int buildingType){
     int buildDR, buildUR;
     if (!findEmptyBlock(buildDR, buildUR, size)) return;
     HumanBuild(builderSN, buildingType, buildDR, buildUR);
+    lastBuildOrderFrame = info.GameFrame;
 }
 //军队管理
 void UsrAI::armymanage(tagInfo& info){
@@ -971,7 +993,7 @@ void UsrAI::processData ()
     for (tagBuilding& b : info.buildings) {
         if (b.Type == BUILDING_STOCK && b.Percent > 0) HuntwareNum++;
     }
-    if(HuntwareNum>1) hasHuntware=true;
+    if(HuntwareNum>=1) hasHuntware=true;
     if(!hasHuntware&&info.Wood>=120){
         buildHuntWarehouse(info);
     }
@@ -1043,9 +1065,9 @@ void UsrAI::processData ()
        if (hasRange&&!hasStable&& info.Wood >= 150&&hasArmyCamp) {
            buildBuilding(info, BUILDING_STABLE);
        }
-       if (info.Human_Num <48 && info.Wood >= 30&&hasUpgraded) {
-           buildBuilding(info, BUILDING_HOME);
-       }
+    //    if (info.Human_Num <48 && info.Wood >= 30&&hasUpgraded) {
+    //        buildBuilding(info, BUILDING_HOME);
+    //    }
        if (!hasCollage&&stage >= stageDefense2 && info.Wood >= 180&&info.civilizationStage == CIVILIZATION_BRONZEAGE) {
            buildBuilding(info, BUILDING_COLLAGE);
        }
