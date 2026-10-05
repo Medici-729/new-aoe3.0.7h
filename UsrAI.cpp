@@ -422,7 +422,7 @@ void UsrAI::manageFarmers(tagInfo& info) {
                 }
             }
         }
-        return;
+        continue;
     }
 }
 //建筑：市镇中心，谷仓，市场，农田，兵营、靶场 、马厩
@@ -890,7 +890,7 @@ void UsrAI::processData ()
     if (info.civilizationStage == CIVILIZATION_BRONZEAGE) {
         hasUpgraded = true;
     }
-    static int lastEnemyFrame = 0;
+    static int lastEnemyFrame = -1;
     if (!info.enemy_armies.empty()) {
         lastEnemyFrame = info.GameFrame;
     }
@@ -1185,11 +1185,11 @@ void UsrAI::processData ()
 //    }
    armymanage(info);
    static bool thirdWaveEnded = false;
-   static int lastEnemyFrame1 = 0;
+   static int lastEnemyFrame1 = -1;
    if (!info.enemy_armies.empty()) {
         lastEnemyFrame1 = info.GameFrame;
     }
-   if (info.GameFrame >= 21000 && info.GameFrame - lastEnemyFrame1 > 300) {
+   if (info.GameFrame >= 24000 && info.GameFrame - lastEnemyFrame1 > 300) {
         thirdWaveEnded = true;
    }
    if (thirdWaveEnded) {
